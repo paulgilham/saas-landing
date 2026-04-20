@@ -5,23 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SaaS Builder</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-white text-gray-900 font-sans">
 
+  <!-- NAVBAR -->
+  <header class="flex justify-between items-center px-6 py-4 max-w-6xl mx-auto">
+    <div class="font-semibold text-lg">SiteForge</div>
+    <div class="hidden md:flex gap-6 text-gray-600">
+      <a href="#">Features</a>
+      <a href="#">Pricing</a>
+      <a href="#">Contact</a>
+    </div>
+    <button class="bg-black text-white px-4 py-2 rounded-lg">Login</button>
+  </header>
+
   <!-- HERO -->
-  <section class="text-center py-24 px-6 bg-gradient-to-b from-white to-gray-50">
-    <h1 class="text-4xl md:text-6xl font-semibold tracking-tight mb-6">
-      Build Interactive Websites <br class="hidden md:block"/> That Convert
+  <section class="text-center py-20 px-6">
+    <h1 class="text-4xl md:text-6xl font-semibold tracking-tight mb-6 leading-tight">
+      Build Websites That <br class="hidden md:block"/> Actually Convert
     </h1>
 
-    <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-10">
-      Turn ideas into high-converting websites in minutes. No code. Just results.
+    <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+      AI-powered website creation for small businesses. Launch faster, capture leads, and grow without complexity.
     </p>
 
-    <div class="flex flex-col sm:flex-row justify-center gap-4">
+    <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
       <button class="bg-black text-white px-8 py-4 rounded-xl hover:scale-105 transition">
         Start Free Trial
       </button>
@@ -29,54 +39,55 @@
         View Demo
       </button>
     </div>
+
+    <!-- TRUST LINE -->
+    <p class="text-sm text-gray-400">Trusted by 1,000+ small businesses</p>
   </section>
 
-  <!-- DEMO PREVIEW -->
-  <section class="max-w-5xl mx-auto px-6 py-16">
-    <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-16 text-center shadow-inner">
-      <p class="text-gray-500">Live Website Preview</p>
+  <!-- DEMO -->
+  <section class="max-w-5xl mx-auto px-6 pb-20">
+    <div class="bg-gray-900 rounded-3xl p-4 shadow-xl">
+      <div class="bg-white rounded-2xl p-10 text-center">
+        <p class="text-gray-400">Interactive Website Preview</p>
+      </div>
     </div>
   </section>
 
   <!-- FEATURES -->
   <section class="max-w-6xl mx-auto px-6 py-20">
+    <h2 class="text-3xl font-semibold text-center mb-12">
+      Everything you need to launch fast
+    </h2>
+
     <div class="grid md:grid-cols-3 gap-8">
 
       <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
-        <h3 class="text-xl font-semibold mb-3">Fast Build</h3>
-        <p class="text-gray-600">Create websites instantly using simple prompts.</p>
+        <h3 class="text-xl font-semibold mb-3">AI Website Builder</h3>
+        <p class="text-gray-600">Generate complete websites from a simple prompt.</p>
       </div>
 
       <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
         <h3 class="text-xl font-semibold mb-3">Lead Capture</h3>
-        <p class="text-gray-600">Turn visitors into real customers automatically.</p>
+        <p class="text-gray-600">Collect emails and turn visitors into customers.</p>
       </div>
 
       <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
-        <h3 class="text-xl font-semibold mb-3">Mobile Optimised</h3>
-        <p class="text-gray-600">Perfect experience on every device.</p>
+        <h3 class="text-xl font-semibold mb-3">Mobile First</h3>
+        <p class="text-gray-600">Designed to look perfect on every device.</p>
       </div>
 
     </div>
   </section>
 
-  <!-- TESTIMONIALS -->
-  <section class="max-w-5xl mx-auto px-6 py-20">
-    <h2 class="text-3xl text-center font-semibold mb-10">
-      What customers say
-    </h2>
-
-    <div class="grid md:grid-cols-2 gap-6">
-      <div class="border p-6 rounded-xl shadow-sm">
-        “This tool helped us launch our website in a day.”
-      </div>
-      <div class="border p-6 rounded-xl shadow-sm">
-        “Simple, fast, and actually converts visitors.”
-      </div>
-    </div>
+  <!-- TESTIMONIAL -->
+  <section class="max-w-4xl mx-auto px-6 py-20 text-center">
+    <p class="text-xl italic mb-6">
+      “We went from idea to live website in under a day.”
+    </p>
+    <p class="text-gray-500">— Small Business Owner</p>
   </section>
 
-  <!-- EMAIL CAPTURE -->
+  <!-- EMAIL -->
   <section class="text-center py-20 px-6">
     <h2 class="text-2xl font-semibold mb-4">
       Get early access
@@ -93,14 +104,14 @@
     </div>
   </section>
 
-  <!-- FINAL CTA -->
+  <!-- CTA -->
   <section class="text-center py-24 px-6 bg-black text-white">
     <h2 class="text-3xl md:text-4xl font-semibold mb-6">
       Start building today
     </h2>
 
     <p class="text-gray-300 mb-8">
-      Launch your next website in minutes, not weeks.
+      Launch your next website in minutes.
     </p>
 
     <button class="bg-white text-black px-8 py-4 rounded-xl hover:opacity-90">
