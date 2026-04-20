@@ -5,41 +5,107 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SaaS Builder</title>
 
-  <!-- THIS LINE FIXES YOUR STYLING -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-white text-gray-900 font-sans">
 
-  <section class="text-center py-20 px-6">
-    <h1 class="text-4xl md:text-5xl font-semibold mb-6">
-      Build Stunning Interactive Websites in Minutes
+  <!-- HERO -->
+  <section class="text-center py-24 px-6 bg-gradient-to-b from-white to-gray-50">
+    <h1 class="text-4xl md:text-6xl font-semibold tracking-tight mb-6">
+      Build Interactive Websites <br class="hidden md:block"/> That Convert
     </h1>
-    <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-      AI-powered website creation for small businesses.
+
+    <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-10">
+      Turn ideas into high-converting websites in minutes. No code. Just results.
     </p>
-    <button class="bg-black text-white px-6 py-3 rounded-xl">
-      Start Free Trial
-    </button>
+
+    <div class="flex flex-col sm:flex-row justify-center gap-4">
+      <button class="bg-black text-white px-8 py-4 rounded-xl hover:scale-105 transition">
+        Start Free Trial
+      </button>
+      <button class="border px-8 py-4 rounded-xl hover:bg-gray-100 transition">
+        View Demo
+      </button>
+    </div>
   </section>
 
-  <section class="max-w-6xl mx-auto px-6 py-16">
-    <div class="grid md:grid-cols-3 gap-6">
-      <div class="border p-6 rounded-2xl shadow-sm">
-        <h3 class="text-xl mb-3">Fast Build</h3>
-        <p>Create sites in minutes using AI prompts.</p>
+  <!-- DEMO PREVIEW -->
+  <section class="max-w-5xl mx-auto px-6 py-16">
+    <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-16 text-center shadow-inner">
+      <p class="text-gray-500">Live Website Preview</p>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="max-w-6xl mx-auto px-6 py-20">
+    <div class="grid md:grid-cols-3 gap-8">
+
+      <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
+        <h3 class="text-xl font-semibold mb-3">Fast Build</h3>
+        <p class="text-gray-600">Create websites instantly using simple prompts.</p>
       </div>
 
-      <div class="border p-6 rounded-2xl shadow-sm">
-        <h3 class="text-xl mb-3">Lead Capture</h3>
-        <p>Collect emails and customer enquiries.</p>
+      <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
+        <h3 class="text-xl font-semibold mb-3">Lead Capture</h3>
+        <p class="text-gray-600">Turn visitors into real customers automatically.</p>
       </div>
 
-      <div class="border p-6 rounded-2xl shadow-sm">
-        <h3 class="text-xl mb-3">Mobile Optimised</h3>
-        <p>Perfect display on every device.</p>
+      <div class="p-6 rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
+        <h3 class="text-xl font-semibold mb-3">Mobile Optimised</h3>
+        <p class="text-gray-600">Perfect experience on every device.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="max-w-5xl mx-auto px-6 py-20">
+    <h2 class="text-3xl text-center font-semibold mb-10">
+      What customers say
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="border p-6 rounded-xl shadow-sm">
+        “This tool helped us launch our website in a day.”
+      </div>
+      <div class="border p-6 rounded-xl shadow-sm">
+        “Simple, fast, and actually converts visitors.”
       </div>
     </div>
+  </section>
+
+  <!-- EMAIL CAPTURE -->
+  <section class="text-center py-20 px-6">
+    <h2 class="text-2xl font-semibold mb-4">
+      Get early access
+    </h2>
+
+    <div class="flex flex-col sm:flex-row justify-center gap-2">
+      <input 
+        class="border px-4 py-3 rounded-xl w-full sm:w-64"
+        placeholder="Enter your email"
+      />
+      <button class="bg-black text-white px-6 py-3 rounded-xl">
+        Join
+      </button>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="text-center py-24 px-6 bg-black text-white">
+    <h2 class="text-3xl md:text-4xl font-semibold mb-6">
+      Start building today
+    </h2>
+
+    <p class="text-gray-300 mb-8">
+      Launch your next website in minutes, not weeks.
+    </p>
+
+    <button class="bg-white text-black px-8 py-4 rounded-xl hover:opacity-90">
+      Get Started
+    </button>
   </section>
 
 </body>
