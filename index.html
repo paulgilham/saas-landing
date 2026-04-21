@@ -6,6 +6,19 @@
   <title>SiteForge</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- BRAND COLOR -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#4F46E5"
+          }
+        }
+      }
+    }
+  </script>
 </head>
 
 <body class="bg-white text-gray-900 font-sans">
@@ -18,7 +31,7 @@
       <a href="#">Pricing</a>
       <a href="#">Contact</a>
     </div>
-    <button class="bg-black text-white px-4 py-2 rounded-lg">Login</button>
+    <button class="bg-primary text-white px-4 py-2 rounded-lg">Login</button>
   </header>
 
   <!-- HERO -->
@@ -31,8 +44,8 @@
       AI-powered website creation for small businesses. Launch faster, capture leads, and grow without complexity.
     </p>
 
-    <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-      <button class="bg-black text-white px-8 py-4 rounded-xl hover:scale-105 transition">
+    <div class="flex flex-col sm:flex-row justify-center gap-4 mb-10">
+      <button class="bg-primary text-white px-8 py-4 rounded-xl hover:scale-105 transition">
         Start Free Trial
       </button>
       <button class="border px-8 py-4 rounded-xl hover:bg-gray-100 transition">
@@ -43,7 +56,7 @@
     <p class="text-sm text-gray-400">Trusted by 1,000+ small businesses</p>
   </section>
 
-  <!-- DEMO (UPGRADED UI) -->
+  <!-- DEMO (REALISTIC PRODUCT STYLE) -->
   <section class="max-w-6xl mx-auto px-6 pb-24">
     <div class="bg-gray-900 rounded-3xl p-4 shadow-2xl">
 
@@ -59,22 +72,13 @@
           <div class="text-sm text-gray-400">siteforge.app</div>
         </div>
 
-        <!-- Main UI -->
-        <div class="flex h-[400px]">
+        <!-- Screenshot Style UI -->
+        <div class="p-10">
+          <h3 class="text-left text-lg font-semibold mb-4">Website Builder</h3>
 
-          <!-- Sidebar -->
-          <div class="w-1/4 border-r p-4 space-y-3 bg-gray-50">
-            <div class="h-10 bg-gray-200 rounded animate-pulse"></div>
-            <div class="h-10 bg-gray-200 rounded animate-pulse"></div>
-            <div class="h-10 bg-gray-200 rounded animate-pulse"></div>
-            <div class="h-10 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-
-          <!-- Canvas -->
-          <div class="flex-1 p-6 space-y-4">
-
-            <div class="h-16 bg-gray-100 rounded animate-pulse"></div>
-            <div class="h-10 bg-gray-100 rounded w-2/3 animate-pulse"></div>
+          <div class="border rounded-xl p-6 space-y-4">
+            <div class="h-6 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+            <div class="h-10 bg-gray-100 rounded animate-pulse"></div>
             <div class="h-32 bg-gray-100 rounded animate-pulse"></div>
 
             <div class="flex gap-4">
@@ -82,10 +86,8 @@
               <div class="h-20 bg-gray-100 rounded flex-1 animate-pulse"></div>
             </div>
 
-            <div class="h-10 bg-black rounded w-32"></div>
-
+            <div class="h-10 bg-primary rounded w-32"></div>
           </div>
-
         </div>
 
       </div>
@@ -119,12 +121,34 @@
     </div>
   </section>
 
-  <!-- TESTIMONIAL -->
-  <section class="max-w-4xl mx-auto px-6 py-20 text-center">
-    <p class="text-xl italic mb-6">
-      “We went from idea to live website in under a day.”
-    </p>
-    <p class="text-gray-500">— Small Business Owner</p>
+  <!-- LOGOS + TESTIMONIALS -->
+  <section class="max-w-5xl mx-auto px-6 py-20">
+
+    <h2 class="text-2xl font-semibold text-center mb-10">
+      Trusted by growing businesses
+    </h2>
+
+    <!-- LOGO ROW -->
+    <div class="flex flex-wrap justify-center gap-6 text-gray-400 mb-12">
+      <span>BrandCo</span>
+      <span>LaunchLab</span>
+      <span>Growthify</span>
+      <span>WebStart</span>
+    </div>
+
+    <!-- TESTIMONIALS -->
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="border p-6 rounded-xl">
+        “We launched our site in one day and started getting leads immediately.”
+        <div class="text-sm text-gray-500 mt-4">— Sarah, Retail Owner</div>
+      </div>
+
+      <div class="border p-6 rounded-xl">
+        “This replaced our developer for landing pages.”
+        <div class="text-sm text-gray-500 mt-4">— James, Agency Founder</div>
+      </div>
+    </div>
+
   </section>
 
   <!-- EMAIL -->
@@ -138,23 +162,23 @@
         class="border px-4 py-3 rounded-xl w-full sm:w-64"
         placeholder="Enter your email"
       />
-      <button class="bg-black text-white px-6 py-3 rounded-xl">
+      <button class="bg-primary text-white px-6 py-3 rounded-xl">
         Join
       </button>
     </div>
   </section>
 
   <!-- CTA -->
-  <section class="text-center py-24 px-6 bg-black text-white">
+  <section class="text-center py-24 px-6 bg-primary text-white">
     <h2 class="text-3xl md:text-4xl font-semibold mb-6">
       Start building today
     </h2>
 
-    <p class="text-gray-300 mb-8">
+    <p class="text-indigo-100 mb-8">
       Launch your next website in minutes.
     </p>
 
-    <button class="bg-white text-black px-8 py-4 rounded-xl hover:opacity-90">
+    <button class="bg-white text-primary px-8 py-4 rounded-xl hover:opacity-90">
       Get Started
     </button>
   </section>
