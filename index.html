@@ -124,50 +124,88 @@ Get Started
 </button>
 </section>
 
-<script>
-// MENU
-menuBtn.onclick = () => mobileMenu.classList.toggle("hidden");
-
-// THEME
-const toggle = document.getElementById("themeToggle");
-function setTheme(dark){
-  document.documentElement.classList.toggle("dark", dark);
-  localStorage.setItem("theme", dark?"dark":"light");
-}
-setTheme(localStorage.theme==="dark");
-toggle.onclick=()=>setTheme(!document.documentElement.classList.contains("dark"));
-
-// DEMO
+  <script>
 const btn = document.getElementById("generateBtn");
+const input = document.getElementById("promptInput");
+
 const loader = document.getElementById("loader");
 const progress = document.getElementById("progress");
+
 const steps = document.getElementById("steps");
 const s2 = document.getElementById("s2");
 const s3 = document.getElementById("s3");
+
 const output = document.getElementById("output");
 
-btn.onclick = () => {
+btn.onclick = async () => {
+
+  const prompt = input.value;
+  if (!prompt) return;
+
   btn.disabled = true;
   btn.innerText = "Generating...";
   loader.classList.remove("hidden");
   steps.classList.remove("hidden");
 
+  // Fake progress (UX only)
   let p = 0;
   let interval = setInterval(()=>{
-    p+=10;
-    progress.style.width = p+"%";
-    if(p>=100) clearInterval(interval);
-  },200);
+    p += 10;
+    progress.style.width = p + "%";
+    if(p >= 100) clearInterval(interval);
+  }, 200);
 
   setTimeout(()=>s2.classList.remove("hidden"),800);
   setTimeout(()=>s3.classList.remove("hidden"),1600);
 
-  setTimeout(()=>{
-    output.classList.remove("hidden");
-    btn.innerText="Done ✓";
-  },2500);
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await res.json();
+
+    // Parse JSON safely
+    let parsed;
+    try {
+      parsed = JSON.parse(data.result);
+    } catch {
+      console.error("Invalid JSON from AI");
+      return;
+    }
+
+    // Inject into UI
+    output.innerHTML = `
+      <div class="font-semibold text-sm">${parsed.title}</div>
+      <div class="text-gray-500 text-sm">${parsed.tagline}</div>
+
+      <button class="bg-primary text-white px-4 py-2 rounded text-sm mt-2">
+        ${parsed.cta}
+      </button>
+
+      <div class="grid grid-cols-2 gap-3 pt-3">
+        ${parsed.services.map(s => `
+          <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+            ${s}
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    setTimeout(() => {
+      output.classList.remove("hidden");
+      btn.innerText = "Done ✓";
+    }, 500);
+
+  } catch (err) {
+    console.error(err);
+  }
 };
 </script>
-
-</body>
-</html>
+  
+  </body>
+  </html>
