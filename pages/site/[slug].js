@@ -1,13 +1,4 @@
 export default function SitePage({ site }) {
-  if (!site) {
-    return (
-      <div style={{ padding: 40, fontFamily: "sans-serif" }}>
-        <h2>Site not found</h2>
-        <p>This usually means the server memory reset (expected on Vercel).</p>
-      </div>
-    );
-  }
-
   return (
     <div style={{ padding: 40, fontFamily: "sans-serif" }}>
       <h1>{site.businessName}</h1>
@@ -15,9 +6,7 @@ export default function SitePage({ site }) {
       <h2>{site.content.home.hero.title}</h2>
       <p>{site.content.home.hero.subtitle}</p>
 
-      <button>
-        {site.content.home.cta.button}
-      </button>
+      <button>{site.content.home.hero.cta}</button>
 
       <div style={{ marginTop: 20 }}>
         {site.content.home.features.items.map((f, i) => (
@@ -28,13 +17,34 @@ export default function SitePage({ site }) {
   );
 }
 
-// -----------------------------
-// SERVER SIDE LOAD
-// -----------------------------
 export async function getServerSideProps({ params }) {
+  // TEMP INLINE GENERATION (NO STORAGE DEPENDENCY)
   const siteId = params.slug;
 
-  const site = global.sites?.[siteId] || null;
+  const site = {
+    siteId,
+    businessName: siteId,
+    pages: ["home"],
+    structure: {
+      home: ["hero", "features", "cta"]
+    },
+    content: {
+      home: {
+        hero: {
+          title: siteId,
+          subtitle: "Generated site",
+          cta: "Get Started"
+        },
+        features: {
+          items: ["Fast", "Simple", "AI Powered"]
+        },
+        cta: {
+          title: "Start now",
+          button: "Launch"
+        }
+      }
+    }
+  };
 
   return {
     props: {
