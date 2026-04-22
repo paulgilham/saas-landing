@@ -16,19 +16,20 @@ export default function Home() {
     if (!prompt) return;
 
     setLoading(true);
+
     loader.classList.remove("hidden");
     steps.classList.remove("hidden");
 
-    // fake progress
+    // fake progress animation
     let p = 0;
     const interval = setInterval(() => {
       p += 10;
       progress.style.width = p + "%";
       if (p >= 100) clearInterval(interval);
-    }, 200);
+    }, 150);
 
-    setTimeout(() => s2.classList.remove("hidden"), 800);
-    setTimeout(() => s3.classList.remove("hidden"), 1600);
+    setTimeout(() => s2.classList.remove("hidden"), 600);
+    setTimeout(() => s3.classList.remove("hidden"), 1200);
 
     try {
       const res = await fetch("/api/generate", {
@@ -41,12 +42,26 @@ export default function Home() {
 
       const data = await res.json();
 
-      // redirect
+      console.log("API RESPONSE:", data);
+
+      // -----------------------------
+      // SAFE CHECK (PREVENT /undefined BUG)
+      // -----------------------------
+      if (!data.siteId) {
+        alert("Generation failed: no siteId returned");
+        setLoading(false);
+        return;
+      }
+
+      // redirect to generated site
       window.location.href = `/site/${data.siteId}`;
 
     } catch (err) {
-      console.error(err);
+      console.error("Frontend error:", err);
+      alert("Server error");
     }
+
+    setLoading(false);
   };
 
   return (
@@ -54,10 +69,8 @@ export default function Home() {
       <Head>
         <title>SiteForge</title>
 
-        {/* Tailwind CDN */}
         <script src="https://cdn.tailwindcss.com"></script>
 
-        {/* Tailwind config */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -91,21 +104,13 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button id="themeToggle">🌙</button>
-
-              <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm shadow">
+              <button>🌙</button>
+              <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm">
                 Login
               </button>
-
-              <button id="menuBtn" className="md:hidden text-2xl">☰</button>
+              <button className="md:hidden text-2xl">☰</button>
             </div>
 
-          </div>
-
-          <div id="mobileMenu" className="hidden px-6 pb-6 space-y-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-t dark:border-gray-800">
-            <a className="block">Features</a>
-            <a className="block">Pricing</a>
-            <a className="block">Contact</a>
           </div>
         </header>
 
@@ -146,7 +151,7 @@ export default function Home() {
 
             {/* LOADER */}
             <div id="loader" className="hidden h-1 bg-gray-200 dark:bg-gray-800">
-              <div id="progress" className="h-1 bg-primary w-0 transition-all duration-500"></div>
+              <div id="progress" className="h-1 bg-primary w-0"></div>
             </div>
 
             {/* STATUS */}
