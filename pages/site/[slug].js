@@ -1,29 +1,24 @@
 import { getSite } from "../../data/sites";
-import { modules } from "../../lib/modules";
 
-export default function Site({ blueprint }) {
-
-  function renderPage() {
-    const structure = blueprint.structure.home;
-    const content = blueprint.content.home;
-
-    return structure.map(m => {
-      const fn = modules[m];
-      return fn(content[m] || {});
-    }).join("");
+export default function SitePage({ site }) {
+  if (!site) {
+    return <div>Site not found (memory reset)</div>;
   }
 
   return (
-    <div dangerouslySetInnerHTML={{ __html: renderPage() }} />
+    <div style={{ padding: 40 }}>
+      <h1>{site.businessName || site.siteId}</h1>
+      <p>Site loaded successfully</p>
+    </div>
   );
 }
 
-export async function getServerSideProps(context) {
-  const { slug } = context.params;
-
-  const blueprint = getSite(slug) || null;
+export async function getServerSideProps({ params }) {
+  const site = getSite(params.slug);
 
   return {
-    props: { blueprint }
+    props: {
+      site: site || null
+    }
   };
 }
