@@ -147,17 +147,6 @@ btn.onclick = async () => {
   loader.classList.remove("hidden");
   steps.classList.remove("hidden");
 
-  // Fake progress (UX only)
-  let p = 0;
-  let interval = setInterval(()=>{
-    p += 10;
-    progress.style.width = p + "%";
-    if(p >= 100) clearInterval(interval);
-  }, 200);
-
-  setTimeout(()=>s2.classList.remove("hidden"),800);
-  setTimeout(()=>s3.classList.remove("hidden"),1600);
-
   try {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -169,41 +158,13 @@ btn.onclick = async () => {
 
     const data = await res.json();
 
-    // Parse JSON safely
-    let parsed;
-    try {
-      parsed = JSON.parse(data.result);
-    } catch {
-      console.error("Invalid JSON from AI");
-      return;
-    }
-
-    // Inject into UI
-    output.innerHTML = `
-      <div class="font-semibold text-sm">${parsed.title}</div>
-      <div class="text-gray-500 text-sm">${parsed.tagline}</div>
-
-      <button class="bg-primary text-white px-4 py-2 rounded text-sm mt-2">
-        ${parsed.cta}
-      </button>
-
-      <div class="grid grid-cols-2 gap-3 pt-3">
-        ${parsed.services.map(s => `
-          <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-            ${s}
-          </div>
-        `).join("")}
-      </div>
-    `;
-
-    setTimeout(() => {
-      output.classList.remove("hidden");
-      btn.innerText = "Done ✓";
-    }, 500);
+    // Redirect to generated site
+    window.location.href = `/site/${data.siteId}`;
 
   } catch (err) {
     console.error(err);
   }
+
 };
 </script>
   
