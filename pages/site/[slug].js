@@ -1,71 +1,55 @@
-export default function SitePage({ site, slug }) {
-  // SAFE FALLBACK (prevents 500)
-  if (!site) {
-    return (
-      <div style={{ padding: 40, fontFamily: "sans-serif" }}>
-        <h1>Site: {slug}</h1>
-        <p>⚠️ No stored data found for this site.</p>
-        <p>This is expected until a database is connected.</p>
-      </div>
-    );
+import { kv } from "@vercel/kv";
+
+export async function getServerSideProps({ params }) {
+  const { slug } = params;
+
+  try {
+    const site = await kv.get(slug);
+
+    if (!site) {
+      return {
+        notFound: true
+      };
+    }
+
+    return {
+      props: {
+        site
+      }
+    };
+  } catch (err) {
+    console.error("KV FETCH ERROR:", err);
+
+    return {
+      notFound: true
+    };
   }
+}
+
+export default function SitePage({ site }) {
+  const home = site?.content?.home;
 
   return (
-    <div style={{ padding: 40, fontFamily: "sans-serif" }}>
-      <h1>{site.businessName}</h1>
+    <div className="p-10 font-sans">
+      <h1 className="text-3xl font-bold">
+        {home?.hero?.title}
+      </h1>
 
-      <h2>{site.content?.home?.hero?.title}</h2>
-      <p>{site.content?.home?.hero?.subtitle}</p>
+      <p className="text-gray-600 mt-2">
+        {home?.hero?.subtitle}
+      </p>
 
-      <button>
-        {site.content?.home?.hero?.cta}
+      <button className="mt-6 bg-black text-white px-4 py-2 rounded">
+        {home?.hero?.cta}
       </button>
 
-      <div style={{ marginTop: 20 }}>
-        {site.content?.home?.features?.items?.map((item, i) => (
-          <div key={i}>{item}</div>
+      <div className="grid grid-cols-2 gap-4 mt-10">
+        {home?.features?.items?.map((item, i) => (
+          <div key={i} className="p-4 border rounded">
+            {item}
+          </div>
         ))}
       </div>
     </div>
   );
-}
-
-// -----------------------------
-// SAFE SSR (NO MEMORY DEPENDENCY)
-// -----------------------------
-export async function getServerSideProps({ params }) {
-  const slug = params.slug;
-
-  // TEMP SAFE MOCK (prevents crash)
-  const site = {
-    siteId: slug,
-    businessName: slug,
-    pages: ["home"],
-    structure: {
-      home: ["hero", "features", "cta"]
-    },
-    content: {
-      home: {
-        hero: {
-          title: slug,
-          subtitle: "Generated preview site",
-          cta: "Get Started"
-        },
-        features: {
-          items: ["Fast", "Simple", "AI Powered"]
-        },
-        cta: {
-          title: "Start now",
-          button: "Launch"
-        }
-      }
-    }
-  };
-
-  return {
-    props: {
-      slug,
-      site
-    }
-  };
 }
