@@ -2,16 +2,22 @@ import { saveSite } from "../../data/sites";
 
 export default async function handler(req, res) {
   try {
-    const { prompt } = req.body;
+    // -------------------------
+    // 1. VALIDATE INPUT
+    // -------------------------
+    const { prompt } = req.body || {};
 
-    if (!prompt) {
+    if (!prompt || typeof prompt !== "string") {
       return res.status(400).json({
-        error: "Missing prompt"
+        error: "Missing or invalid prompt"
       });
     }
 
+    // -------------------------
+    // 2. SYSTEM PROMPT
+    // -------------------------
     const systemPrompt = `
-Return ONLY valid JSON. No explanation. No markdown.
+Return ONLY valid JSON. No markdown. No explanation.
 
 You must return exactly this structure:
 
@@ -41,7 +47,9 @@ You must return exactly this structure:
 }
 `;
 
-    // CALL OPENAI
+    // -------------------------
+    // 3. CALL OPENAI
+    // -------------------------
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -60,8 +68,7 @@ You must return exactly this structure:
 
     const data = await response.json();
 
-    // SAFETY CHECK: OpenAI response exists
-    if (!data.choices || !data.choices[0]) {
+    if (!data?.choices?.[0]?.message?.content) {
       console.error("OpenAI invalid response:", data);
 
       return res.status(500).json({
@@ -73,7 +80,9 @@ You must return exactly this structure:
 
     console.log("RAW AI OUTPUT:", text);
 
-    // SAFE JSON EXTRACTION (fixes your "Unexpected token A" error)
+    // -------------------------
+    // 4. SAFE JSON PARSING
+    // -------------------------
     let blueprint;
 
     try {
@@ -81,7 +90,7 @@ You must return exactly this structure:
       const end = text.lastIndexOf("}");
 
       if (start === -1 || end === -1) {
-        throw new Error("No JSON object found in AI output");
+        throw new Error("No JSON found in AI response");
       }
 
       const cleanJson = text.substring(start, end + 1);
@@ -97,18 +106,32 @@ You must return exactly this structure:
       });
     }
 
-    // SAFE SLUG
-    blueprint.siteId = (blueprint.siteId || "generated-site")
+    // -------------------------
+    // 5. SAFE SITE ID
+    // -------------------------
+    let siteId = blueprint.siteId;
+
+    if (!siteId || typeof siteId !== "string") {
+      siteId = "site-" + Date.now();
+    }
+
+    siteId = siteId
       .toLowerCase()
       .replace(/\s+/g, "-")
-      .replace(/[^\w-]+/g, "");
+      .replace(/[^\w-]/g, "");
 
-    // SAVE SITE (temporary memory store)
-    saveSite(blueprint.siteId, blueprint);
+    blueprint.siteId = siteId;
 
-    // ALWAYS RETURN VALID JSON
+    // -------------------------
+    // 6. SAVE SITE (in-memory)
+    // -------------------------
+    saveSite(siteId, blueprint);
+
+    // -------------------------
+    // 7. RESPONSE (ALWAYS SAFE)
+    // -------------------------
     return res.status(200).json({
-      siteId: blueprint.siteId
+      siteId
     });
 
   } catch (err) {
