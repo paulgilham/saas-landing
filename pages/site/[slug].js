@@ -13,12 +13,12 @@ export default function SitePage() {
   const [loading, setLoading] = useState(true);
 
   // -----------------------------------
-  // FUTURE SWITCH (KEEP FALSE FOR NOW)
+  // MODE SWITCH (KEEP FALSE FOR NOW)
   // -----------------------------------
   const USE_REACT = false;
 
   // -----------------------------------
-  // FETCH SITE FROM API
+  // FETCH SITE VIA KV RESOLVER API
   // -----------------------------------
   useEffect(() => {
     if (!slug) return;
@@ -30,7 +30,7 @@ export default function SitePage() {
 
         setSite(data.site || null);
       } catch (err) {
-        console.error("FETCH ERROR:", err);
+        console.error("SITE FETCH ERROR:", err);
       } finally {
         setLoading(false);
       }
@@ -53,14 +53,14 @@ export default function SitePage() {
         return null;
       }
 
-      // =====================================
-      // 🧠 CRITICAL FIX: NORMALIZATION LAYER
-      // =====================================
+      // -------------------------------
+      // SAFE DATA EXTRACTION (CRITICAL)
+      // -------------------------------
       const rawData = site.content?.[moduleName] || {};
       const data = normalizeContent(moduleName, rawData);
 
       // -------------------------
-      // REACT MODE (FUTURE)
+      // FUTURE: REACT MODE
       // -------------------------
       if (USE_REACT) {
         const Component = reactModules[moduleName];
@@ -91,14 +91,22 @@ export default function SitePage() {
   // LOADING STATE
   // -----------------------------------
   if (loading) {
-    return <div className="p-10 text-center">Loading...</div>;
+    return (
+      <div className="p-10 text-center">
+        Loading...
+      </div>
+    );
   }
 
   // -----------------------------------
   // ERROR STATE
   // -----------------------------------
   if (!site) {
-    return <div className="p-10 text-center">Site not found</div>;
+    return (
+      <div className="p-10 text-center">
+        Site not found
+      </div>
+    );
   }
 
   // -----------------------------------
