@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-
 import { modules } from "../../lib/modules";
 
 export default function SitePage() {
@@ -26,7 +25,8 @@ export default function SitePage() {
       try {
         const res = await fetch(`/api/site?slug=${slug}`);
         const data = await res.json();
-        setSite(data.site || null);
+
+        setSite(data.site || data || null);
       } catch (err) {
         console.error(err);
       } finally {
@@ -105,39 +105,50 @@ export default function SitePage() {
   };
 
   // -----------------------------------
-  // LOADING STATES
+  // SAFE HELPERS (CRITICAL)
   // -----------------------------------
-  if (loading) {
-    return <div className="p-10 text-center">Loading...</div>;
-  }
-
-  if (!site) {
-    return <div className="p-10 text-center">Site not found</div>;
-  }
+  const safeObject = (val) => {
+    if (!val || typeof val !== "object") return {};
+    if (Array.isArray(val)) return val;
+    return val;
+  };
 
   // -----------------------------------
-  // MODULE RENDERER
+  // MODULE RENDERER (HARDENED)
   // -----------------------------------
   const renderModules = () => {
-    return site.structure.home.map((moduleName, i) => {
-      const data = site.content?.[moduleName] || {};
+    const structure = site?.structure?.home || [];
+
+    return structure.map((moduleName, i) => {
       const Component = modules[moduleName];
 
       if (!Component) return null;
 
+      const rawData = site?.content?.home?.[moduleName];
+      const data = safeObject(rawData);
+
       return (
         <div
-          key={i}
+          key={`${moduleName}-${i}`}
           className="relative group border-b border-gray-100"
           onMouseEnter={() => setActiveModule(moduleName)}
           onMouseLeave={() => setActiveModule(null)}
         >
           {/* MODULE */}
-          <div>{Component(data)}</div>
+          <div>
+            {(() => {
+              try {
+                return Component(data);
+              } catch (err) {
+                console.error("Render error:", moduleName, err);
+                return null;
+              }
+            })()}
+          </div>
 
-          {/* HOVER CONTROL */}
+          {/* MODULE CONTROLS */}
           {activeModule === moduleName && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-2 right-2 flex gap-2">
               <button
                 onClick={() => regenerateModule(moduleName)}
                 className="bg-black text-white text-xs px-3 py-1 rounded opacity-80 hover:opacity-100"
@@ -154,6 +165,17 @@ export default function SitePage() {
   };
 
   // -----------------------------------
+  // LOADING STATE
+  // -----------------------------------
+  if (loading) {
+    return <div className="p-10 text-center">Loading...</div>;
+  }
+
+  if (!site) {
+    return <div className="p-10 text-center">Site not found</div>;
+  }
+
+  // -----------------------------------
   // UI
   // -----------------------------------
   return (
@@ -161,7 +183,9 @@ export default function SitePage() {
 
       {/* TOP BAR */}
       <div className="sticky top-0 bg-white border-b p-4 flex justify-between">
-        <div className="font-semibold">{site.slug}</div>
+        <div className="font-semibold">
+          {site.slug} • {site.vertical} • {site.tier}
+        </div>
 
         <button
           onClick={loadHistory}
@@ -171,16 +195,12 @@ export default function SitePage() {
         </button>
       </div>
 
-      {/* PAGE CONTENT */}
+      {/* MAIN CONTENT */}
       <div>{renderModules()}</div>
 
-      {/* -----------------------------------
-          VERSION HISTORY PANEL
-      ----------------------------------- */}
+      {/* HISTORY PANEL */}
       <div className="border-t p-4 bg-gray-50">
-        <h3 className="font-semibold mb-3">
-          Version History
-        </h3>
+        <h3 className="font-semibold mb-3">Version History</h3>
 
         {loadingHistory && (
           <div className="text-sm text-gray-500">
@@ -201,9 +221,7 @@ export default function SitePage() {
               className="flex justify-between items-center bg-white p-2 border rounded"
             >
               <div className="text-sm">
-                <span className="font-semibold">
-                  v{v.version}
-                </span>
+                <span className="font-semibold">v{v.version}</span>
               </div>
 
               <button
