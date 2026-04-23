@@ -7,7 +7,7 @@ const openai = new OpenAI({
 });
 
 /**
- * SAFE SLUG
+ * SLUG
  */
 function createSlug(text) {
   return text
@@ -19,83 +19,50 @@ function createSlug(text) {
 }
 
 /**
- * SAFE JSON PARSER (CRITICAL FIX)
+ * SAFE JSON
  */
 function safeParse(text) {
   try {
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.error("❌ JSON parse failed:", text);
+    return JSON.parse(
+      text.replace(/```json/g, "").replace(/```/g, "").trim()
+    );
+  } catch (e) {
+    console.error("JSON parse failed:", text);
     return null;
   }
 }
 
 /**
- * MODULE CONTENT GENERATION
+ * MODULE CONTENT
  */
 async function generateModuleContent(moduleName, seed) {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `
-You generate ONLY valid JSON.
-
-No markdown. No explanations.
-
-Return:
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `Return ONLY valid JSON:
 {
   "title": "",
   "subtitle": "",
-  "text": "",
   "cta": "",
   "button": "",
   "items": []
-}
-          `.trim()
-        },
-        {
-          role: "user",
-          content: `Business: ${seed} | Module: ${moduleName}`
-        }
-      ],
-      temperature: 0.6
-    });
+}`
+      },
+      {
+        role: "user",
+        content: `${seed} | module: ${moduleName}`
+      }
+    ],
+    temperature: 0.6
+  });
 
-    const parsed = safeParse(response.choices[0].message.content);
-
-    if (!parsed) {
-      return {
-        title: moduleName,
-        subtitle: "",
-        text: "Content unavailable",
-        items: []
-      };
-    }
-
-    return parsed;
-
-  } catch (err) {
-    console.error("Module generation error:", moduleName, err);
-
-    return {
-      title: moduleName,
-      subtitle: "",
-      text: "Fallback content",
-      items: []
-    };
-  }
+  return safeParse(res.choices[0].message.content) || {};
 }
 
 /**
- * MAIN API
+ * MAIN
  */
 export default async function handler(req, res) {
   try {
@@ -105,28 +72,37 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing prompt" });
     }
 
-    // =====================================
-    // 1. BLUEPRINT (INTELLIGENCE LAYER)
-    // =====================================
+    // ---------------------------
+    // 1. IDS
+    // ---------------------------
+    const businessId = crypto.randomUUID();
+    const slug = createSlug(prompt);
+    const version = 1;
+
+    // ---------------------------
+    // 2. BLUEPRINT
+    // ---------------------------
     const blueprint = await generateBlueprint(prompt);
 
-    // =====================================
-    // 2. MODULE CONTENT (PARALLEL FIX)
-    // =====================================
+    // ---------------------------
+    // 3. AI CONTENT
+    // ---------------------------
     const contentEntries = await Promise.all(
-      blueprint.layout.map(async (moduleName) => {
-        const data = await generateModuleContent(moduleName, prompt);
-        return [moduleName, data];
+      blueprint.layout.map(async (m) => {
+        const data = await generateModuleContent(m, prompt);
+        return [m, data];
       })
     );
 
     const content = Object.fromEntries(contentEntries);
 
-    // =====================================
-    // 3. SITE OBJECT
-    // =====================================
+    // ---------------------------
+    // 4. FULL SITE OBJECT
+    // ---------------------------
     const site = {
-      prompt,
+      businessId,
+      version,
+      slug,
       blueprint,
       structure: {
         home: blueprint.layout
@@ -135,29 +111,39 @@ export default async function handler(req, res) {
       createdAt: Date.now()
     };
 
-    // =====================================
-    // 4. SLUG
-    // =====================================
-    const siteId = createSlug(prompt);
+    // ---------------------------
+    // 5. STORE VERSIONED SITE
+    // ---------------------------
+    await kv.set(`site:${businessId}:v${version}`, site);
 
-    // =====================================
-    // 5. STORE IN KV
-    // =====================================
-    await kv.set(siteId, site);
+    // ---------------------------
+    // 6. SLUG POINTER (IMPORTANT)
+    // ---------------------------
+    await kv.set(`slug:${slug}`, {
+      slug,
+      businessId,
+      currentVersion: version
+    });
 
-    // =====================================
-    // 6. RESPONSE
-    // =====================================
+    // ---------------------------
+    // 7. BUSINESS INDEX
+    // ---------------------------
+    await kv.set(`biz:${businessId}`, {
+      businessId,
+      type: blueprint.type || "default"
+    });
+
+    // ---------------------------
+    // RESPONSE
+    // ---------------------------
     return res.status(200).json({
-      siteId,
-      site
+      siteId: slug,
+      businessId,
+      version
     });
 
   } catch (err) {
-    console.error("❌ Generate API error:", err);
-
-    return res.status(500).json({
-      error: "Generation failed"
-    });
+    console.error(err);
+    return res.status(500).json({ error: "Generation failed" });
   }
 }
