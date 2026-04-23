@@ -1,9 +1,10 @@
 import { generateBlueprint } from "@/lib/blueprintEngine";
 import { kv } from "@/lib/kv";
-import { generateModuleContent } from "@/lib/ai";
+import { generateModuleContent } from "@/lib/contentEngine";
+import { stripHtmlDeep } from "@/lib/sanitizeContent";
 
 // ------------------------------------
-// VERTICAL DETECTION (CAN STAY OR MOVE LATER)
+// VERTICAL DETECTION (OPTIONAL HINT ONLY)
 // ------------------------------------
 function detectVertical(prompt) {
   const t = prompt.toLowerCase();
@@ -16,66 +17,13 @@ function detectVertical(prompt) {
 }
 
 // ------------------------------------
-// CONTENT DEPTH (TIER INTELLIGENCE)
-// ------------------------------------
-function getContentDepth(tier) {
-  if (tier === "simple") return "basic";
-  if (tier === "medium") return "structured";
-  if (tier === "advanced") return "persuasive";
-  return "structured";
-}
-
-// ------------------------------------
-// MODULE PROMPT ENGINE
-// ------------------------------------
-function buildModulePrompt({
-  module,
-  prompt,
-  category,
-  tier
-}) {
-  const depth = getContentDepth(tier);
-
-  return `
-You are generating website content.
-
-Business context:
-${prompt}
-
-Category:
-${category}
-
-Module:
-${module}
-
-Depth level:
-${depth}
-
-Rules:
-- Do not output JSON
-- Do not create structure
-- Only generate module content
-- Keep tone appropriate for business category
-
-Module focus:
-- hero → value proposition
-- services → clarity + offerings
-- testimonials → trust
-- CTA → conversion
-`;
-}
-
-// ------------------------------------
-// MAIN GENERATION
+// MAIN GENERATION HANDLER
 // ------------------------------------
 export default async function handler(req, res) {
   try {
     const { prompt, tier = "medium", slug, modifiers = [] } = req.body;
 
-    // 🟢 1. CATEGORY (LAYER 1 via blueprintEngine internally)
-    const vertical = detectVertical(prompt);
-
-    // 🟢 2. STRUCTURE (NOW COMES FROM blueprintEngine.js)
+    // 🟢 1. STRUCTURE GENERATION (ONLY SOURCE OF TRUTH)
     const blueprintResult = generateBlueprint({
       prompt,
       tier,
@@ -84,36 +32,29 @@ export default async function handler(req, res) {
 
     const { type: category, layout: modules } = blueprintResult;
 
-    // 🟢 3. STRUCTURE OUTPUT
+    // 🟢 2. STRUCTURE OUTPUT (NO AI HERE)
     const structure = {
       home: modules
     };
 
-    // 🟢 4. CONTENT GENERATION (AI ONLY FILLS MODULES)
+    // 🟢 3. CONTENT GENERATION (STRICTLY ISOLATED LAYER)
     const content = { home: {} };
 
     for (const module of modules) {
-      const promptForModule = buildModulePrompt({
-        module,
-        prompt,
-        category,
-        tier
-      });
-
+      // ONLY PASS CONTEXT — NO PROMPT BUILDING HERE
       const result = await generateModuleContent({
         module,
-        prompt: promptForModule,
         category,
-        tier
+        modifiers,
+        tier,
+        prompt
       });
 
-      content.home[module] =
-        typeof result === "object" && result
-          ? result
-          : { text: String(result || "") };
+      // 🧠 HARD BOUNDARY ENFORCEMENT
+      content.home[module] = stripHtmlDeep(result);
     }
 
-    // 🟢 5. FINAL SITE OBJECT
+    // 🟢 4. FINAL SITE OBJECT (IMMUTABLE STRUCTURE)
     const site = {
       slug,
       prompt,
@@ -125,7 +66,7 @@ export default async function handler(req, res) {
       createdAt: Date.now()
     };
 
-    // 🟢 6. VERSIONING (KV STORAGE)
+    // 🟢 5. VERSIONING (KV STORAGE)
     if (kv) {
       const key = `site:${slug}`;
       const existing = (await kv.get(key)) || [];
@@ -138,7 +79,7 @@ export default async function handler(req, res) {
     return res.status(200).json(site);
 
   } catch (err) {
-    console.error(err);
+    console.error("Generation error:", err);
     return res.status(500).json({ error: "Generation failed" });
   }
 }
