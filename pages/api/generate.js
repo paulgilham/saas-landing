@@ -7,7 +7,7 @@ const openai = new OpenAI({
 });
 
 /**
- * Utility: safe slug
+ * SAFE SLUG
  */
 function createSlug(text) {
   return text
@@ -19,7 +19,24 @@ function createSlug(text) {
 }
 
 /**
- * Generate structured content per module
+ * SAFE JSON PARSER (CRITICAL FIX)
+ */
+function safeParse(text) {
+  try {
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.error("❌ JSON parse failed:", text);
+    return null;
+  }
+}
+
+/**
+ * MODULE CONTENT GENERATION
  */
 async function generateModuleContent(moduleName, seed) {
   try {
@@ -29,43 +46,57 @@ async function generateModuleContent(moduleName, seed) {
         {
           role: "system",
           content: `
-You generate structured website content for a module.
+You generate ONLY valid JSON.
 
-Return ONLY JSON:
+No markdown. No explanations.
+
+Return:
 {
   "title": "",
   "subtitle": "",
-  "items": [],
   "text": "",
   "cta": "",
-  "button": ""
+  "button": "",
+  "items": []
 }
-Keep it relevant, concise, and suitable for a real business website.
           `.trim()
         },
         {
           role: "user",
-          content: `Business: ${seed}
-Module: ${moduleName}`
+          content: `Business: ${seed} | Module: ${moduleName}`
         }
       ],
-      temperature: 0.7
+      temperature: 0.6
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const parsed = safeParse(response.choices[0].message.content);
+
+    if (!parsed) {
+      return {
+        title: moduleName,
+        subtitle: "",
+        text: "Content unavailable",
+        items: []
+      };
+    }
+
+    return parsed;
 
   } catch (err) {
-    console.error(`Module generation failed: ${moduleName}`, err);
+    console.error("Module generation error:", moduleName, err);
 
-    // safe fallback so system never breaks
     return {
       title: moduleName,
-      text: "Content unavailable",
+      subtitle: "",
+      text: "Fallback content",
       items: []
     };
   }
 }
 
+/**
+ * MAIN API
+ */
 export default async function handler(req, res) {
   try {
     const { prompt } = req.body;
@@ -74,26 +105,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing prompt" });
     }
 
-    // ===================================
+    // =====================================
     // 1. BLUEPRINT (INTELLIGENCE LAYER)
-    // ===================================
+    // =====================================
     const blueprint = await generateBlueprint(prompt);
 
-    // ===================================
-    // 2. CONTENT GENERATION PER MODULE
-    // ===================================
-    const content = {};
+    // =====================================
+    // 2. MODULE CONTENT (PARALLEL FIX)
+    // =====================================
+    const contentEntries = await Promise.all(
+      blueprint.layout.map(async (moduleName) => {
+        const data = await generateModuleContent(moduleName, prompt);
+        return [moduleName, data];
+      })
+    );
 
-    for (const moduleName of blueprint.layout) {
-      content[moduleName] = await generateModuleContent(
-        moduleName,
-        prompt
-      );
-    }
+    const content = Object.fromEntries(contentEntries);
 
-    // ===================================
-    // 3. BUILD SITE OBJECT
-    // ===================================
+    // =====================================
+    // 3. SITE OBJECT
+    // =====================================
     const site = {
       prompt,
       blueprint,
@@ -104,26 +135,26 @@ export default async function handler(req, res) {
       createdAt: Date.now()
     };
 
-    // ===================================
-    // 4. CREATE SITE ID / SLUG
-    // ===================================
+    // =====================================
+    // 4. SLUG
+    // =====================================
     const siteId = createSlug(prompt);
 
-    // ===================================
+    // =====================================
     // 5. STORE IN KV
-    // ===================================
+    // =====================================
     await kv.set(siteId, site);
 
-    // ===================================
+    // =====================================
     // 6. RESPONSE
-    // ===================================
+    // =====================================
     return res.status(200).json({
       siteId,
       site
     });
 
   } catch (err) {
-    console.error("Generate API error:", err);
+    console.error("❌ Generate API error:", err);
 
     return res.status(500).json({
       error: "Generation failed"
