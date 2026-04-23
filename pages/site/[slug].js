@@ -12,7 +12,7 @@ export default function SitePage() {
   const [loading, setLoading] = useState(true);
 
   // -----------------------------------
-  // SWITCH (KEEP FALSE FOR NOW)
+  // FUTURE SWITCH (KEEP FALSE FOR NOW)
   // -----------------------------------
   const USE_REACT = false;
 
@@ -39,13 +39,14 @@ export default function SitePage() {
   }, [slug]);
 
   // -----------------------------------
-  // DYNAMIC MODULE RENDERER
+  // MODULE RENDERER
   // -----------------------------------
   const renderModules = () => {
     if (!site?.structure?.home) return null;
 
     return site.structure.home.map((moduleName, i) => {
-      const data = site.content?.home?.[moduleName] || {};
+      // ✅ FIX: correct content path (FLAT STRUCTURE)
+      const data = site.content?.[moduleName] || {};
 
       // -------------------------
       // REACT MODE (FUTURE)
@@ -83,7 +84,7 @@ export default function SitePage() {
   };
 
   // -----------------------------------
-  // STATES
+  // LOADING STATE
   // -----------------------------------
   if (loading) {
     return (
@@ -93,6 +94,9 @@ export default function SitePage() {
     );
   }
 
+  // -----------------------------------
+  // ERROR STATE
+  // -----------------------------------
   if (!site) {
     return (
       <div className="p-10 text-center">
