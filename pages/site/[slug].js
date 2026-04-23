@@ -1,55 +1,84 @@
-import { kv } from "@vercel/kv";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { modules } from "../../lib/modules";
 
-export async function getServerSideProps({ params }) {
-  const { slug } = params;
+export default function SitePage() {
+  const router = useRouter();
+  const { slug } = router.query;
 
-  try {
-    const site = await kv.get(slug);
+  const [site, setSite] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    if (!site) {
-      return {
-        notFound: true
-      };
-    }
+  // -----------------------------
+  // FETCH SITE DATA
+  // -----------------------------
+  useEffect(() => {
+    if (!slug) return;
 
-    return {
-      props: {
-        site
+    const fetchSite = async () => {
+      try {
+        const res = await fetch(`/api/site?slug=${slug}`);
+        const data = await res.json();
+
+        setSite(data.site);
+      } catch (err) {
+        console.error("FETCH ERROR:", err);
+      } finally {
+        setLoading(false);
       }
     };
-  } catch (err) {
-    console.error("KV FETCH ERROR:", err);
 
-    return {
-      notFound: true
-    };
+    fetchSite();
+  }, [slug]);
+
+  // -----------------------------
+  // RENDER MODULES (DYNAMIC)
+  // -----------------------------
+  const renderModules = () => {
+    if (!site || !site.structure || !site.content) return "";
+
+    return (site.structure.home || [])
+      .map((moduleName) => {
+        const fn = modules[moduleName];
+
+        if (!fn) {
+          console.warn("Missing module:", moduleName);
+          return "";
+        }
+
+        const data = site.content.home?.[moduleName] || {};
+
+        try {
+          return fn(data);
+        } catch (err) {
+          console.error("MODULE ERROR:", moduleName, err);
+          return "";
+        }
+      })
+      .join("");
+  };
+
+  // -----------------------------
+  // STATES
+  // -----------------------------
+  if (loading) {
+    return <div className="p-10 text-center">Loading...</div>;
   }
-}
 
-export default function SitePage({ site }) {
-  const home = site?.content?.home;
+  if (!site) {
+    return <div className="p-10 text-center">Site not found</div>;
+  }
 
+  // -----------------------------
+  // RENDER PAGE
+  // -----------------------------
   return (
-    <div className="p-10 font-sans">
-      <h1 className="text-3xl font-bold">
-        {home?.hero?.title}
-      </h1>
-
-      <p className="text-gray-600 mt-2">
-        {home?.hero?.subtitle}
-      </p>
-
-      <button className="mt-6 bg-black text-white px-4 py-2 rounded">
-        {home?.hero?.cta}
-      </button>
-
-      <div className="grid grid-cols-2 gap-4 mt-10">
-        {home?.features?.items?.map((item, i) => (
-          <div key={i} className="p-4 border rounded">
-            {item}
-          </div>
-        ))}
-      </div>
+    <div className="min-h-screen bg-white text-gray-900">
+      <div
+        dangerouslySetInnerHTML={{
+          __html: renderModules(),
+        }}
+      />
     </div>
   );
 }
