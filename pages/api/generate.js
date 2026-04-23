@@ -1,13 +1,14 @@
 import { kv } from "@vercel/kv";
 import OpenAI from "openai";
 import { generateBlueprint } from "../../lib/blueprintEngine";
+import { moduleContracts } from "../../lib/moduleContracts";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
 /**
- * SLUG
+ * SLUG GENERATION
  */
 function createSlug(text) {
   return text
@@ -19,7 +20,7 @@ function createSlug(text) {
 }
 
 /**
- * SAFE JSON
+ * SAFE JSON PARSER
  */
 function safeParse(text) {
   try {
@@ -33,36 +34,48 @@ function safeParse(text) {
 }
 
 /**
- * MODULE CONTENT
+ * 🔥 STRICT AI MODULE GENERATOR (CONTRACT ENFORCED)
  */
 async function generateModuleContent(moduleName, seed) {
+  const contract = moduleContracts[moduleName];
+
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
-        content: `Return ONLY valid JSON:
-{
-  "title": "",
-  "subtitle": "",
-  "cta": "",
-  "button": "",
-  "items": []
-}`
+        content: `
+You are a strict JSON generator for a website builder.
+
+YOU MUST follow this exact schema:
+${JSON.stringify(contract)}
+
+RULES:
+- Output ONLY valid JSON
+- No markdown
+- No explanations
+- No extra keys
+- No nesting unless schema defines it exactly
+- No text outside JSON
+        `
       },
       {
         role: "user",
-        content: `${seed} | module: ${moduleName}`
+        content: `
+Business context: ${seed}
+Module: ${moduleName}
+Generate content strictly following schema.
+        `
       }
     ],
-    temperature: 0.6
+    temperature: 0.4
   });
 
   return safeParse(res.choices[0].message.content) || {};
 }
 
 /**
- * MAIN
+ * MAIN GENERATION ENDPOINT
  */
 export default async function handler(req, res) {
   try {
@@ -73,31 +86,31 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
-    // 1. IDS
+    // IDS
     // ---------------------------
     const businessId = crypto.randomUUID();
     const slug = createSlug(prompt);
     const version = 1;
 
     // ---------------------------
-    // 2. BLUEPRINT
+    // BLUEPRINT (STRUCTURE)
     // ---------------------------
     const blueprint = await generateBlueprint(prompt);
 
     // ---------------------------
-    // 3. AI CONTENT
+    // AI MODULE CONTENT (CONTRACT LOCKED)
     // ---------------------------
     const contentEntries = await Promise.all(
-      blueprint.layout.map(async (m) => {
-        const data = await generateModuleContent(m, prompt);
-        return [m, data];
+      blueprint.layout.map(async (moduleName) => {
+        const data = await generateModuleContent(moduleName, prompt);
+        return [moduleName, data];
       })
     );
 
     const content = Object.fromEntries(contentEntries);
 
     // ---------------------------
-    // 4. FULL SITE OBJECT
+    // FINAL SITE OBJECT
     // ---------------------------
     const site = {
       businessId,
@@ -112,12 +125,12 @@ export default async function handler(req, res) {
     };
 
     // ---------------------------
-    // 5. STORE VERSIONED SITE
+    // STORE VERSIONED SITE
     // ---------------------------
     await kv.set(`site:${businessId}:v${version}`, site);
 
     // ---------------------------
-    // 6. SLUG POINTER (IMPORTANT)
+    // SLUG POINTER (PUBLIC ROUTE)
     // ---------------------------
     await kv.set(`slug:${slug}`, {
       slug,
@@ -126,7 +139,7 @@ export default async function handler(req, res) {
     });
 
     // ---------------------------
-    // 7. BUSINESS INDEX
+    // BUSINESS INDEX
     // ---------------------------
     await kv.set(`biz:${businessId}`, {
       businessId,
