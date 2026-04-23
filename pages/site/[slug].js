@@ -9,10 +9,12 @@ export default function SitePage() {
 
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState("");
+
   const [activeModule, setActiveModule] = useState(null);
   const [loadingModule, setLoadingModule] = useState(null);
+
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // -----------------------------------
   // FETCH SITE
@@ -36,7 +38,28 @@ export default function SitePage() {
   }, [slug]);
 
   // -----------------------------------
-  // REGENERATE MODULE (CORE ACTION)
+  // LOAD HISTORY
+  // -----------------------------------
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+
+    try {
+      const res = await fetch(`/api/site-history?slug=${slug}`);
+      const data = await res.json();
+      setHistory(data.versions || []);
+    } catch (err) {
+      console.error("history error", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (slug) loadHistory();
+  }, [slug]);
+
+  // -----------------------------------
+  // MODULE REGENERATION
   // -----------------------------------
   const regenerateModule = async (moduleName, instruction = "") => {
     setLoadingModule(moduleName);
@@ -58,31 +81,27 @@ export default function SitePage() {
         setSite(data.site);
       }
     } catch (err) {
-      console.error("regen error:", err);
+      console.error(err);
     } finally {
       setLoadingModule(null);
     }
   };
 
   // -----------------------------------
-  // AI CHAT HANDLER (SMART ROUTER)
+  // ROLLBACK
   // -----------------------------------
-  const handleChat = async () => {
-    if (!chatInput.trim()) return;
+  const rollback = async (version) => {
+    try {
+      await fetch("/api/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, version })
+      });
 
-    const input = chatInput.toLowerCase();
-
-    // SIMPLE INTENT ROUTING (CAN EVOLVE LATER)
-    let targetModule = "hero";
-
-    if (input.includes("service")) targetModule = "services";
-    if (input.includes("testimonial")) targetModule = "testimonials";
-    if (input.includes("cta")) targetModule = "cta";
-
-    await regenerateModule(targetModule, chatInput);
-
-    setChatInput("");
-    setChatOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // -----------------------------------
@@ -97,7 +116,7 @@ export default function SitePage() {
   }
 
   // -----------------------------------
-  // RENDER MODULES WITH CONTROLS
+  // MODULE RENDERER
   // -----------------------------------
   const renderModules = () => {
     return site.structure.home.map((moduleName, i) => {
@@ -113,17 +132,19 @@ export default function SitePage() {
           onMouseEnter={() => setActiveModule(moduleName)}
           onMouseLeave={() => setActiveModule(null)}
         >
-          {/* MODULE CONTENT */}
+          {/* MODULE */}
           <div>{Component(data)}</div>
 
-          {/* CLEAN HOVER CONTROL (NO CLUTTER) */}
+          {/* HOVER CONTROL */}
           {activeModule === moduleName && (
             <div className="absolute top-2 right-2">
               <button
                 onClick={() => regenerateModule(moduleName)}
                 className="bg-black text-white text-xs px-3 py-1 rounded opacity-80 hover:opacity-100"
               >
-                {loadingModule === moduleName ? "Improving..." : "Improve"}
+                {loadingModule === moduleName
+                  ? "Improving..."
+                  : "Improve"}
               </button>
             </div>
           )}
@@ -143,10 +164,10 @@ export default function SitePage() {
         <div className="font-semibold">{site.slug}</div>
 
         <button
-          onClick={() => setChatOpen(true)}
-          className="bg-primary text-white px-4 py-2 rounded"
+          onClick={loadHistory}
+          className="bg-gray-900 text-white px-4 py-2 rounded"
         >
-          AI Assist
+          Refresh History
         </button>
       </div>
 
@@ -154,42 +175,47 @@ export default function SitePage() {
       <div>{renderModules()}</div>
 
       {/* -----------------------------------
-          AI CHAT PANEL (SIMPLE + CLEAN)
+          VERSION HISTORY PANEL
       ----------------------------------- */}
-      {chatOpen && (
-        <div className="fixed bottom-0 right-0 w-96 h-[400px] bg-white border shadow-xl flex flex-col">
-          
-          <div className="p-3 border-b font-semibold">
-            AI Assistant
+      <div className="border-t p-4 bg-gray-50">
+        <h3 className="font-semibold mb-3">
+          Version History
+        </h3>
+
+        {loadingHistory && (
+          <div className="text-sm text-gray-500">
+            Loading history...
           </div>
+        )}
 
-          <div className="flex-1 p-3 text-sm text-gray-500">
-            Try:
-            <br />
-            “make this more luxury”
-            <br />
-            “improve testimonials”
-            <br />
-            “better for conversions”
+        {!loadingHistory && history.length === 0 && (
+          <div className="text-sm text-gray-500">
+            No history found
           </div>
+        )}
 
-          <div className="p-3 border-t flex gap-2">
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              className="flex-1 border p-2 text-sm"
-              placeholder="Ask AI to improve site..."
-            />
-
-            <button
-              onClick={handleChat}
-              className="bg-black text-white px-3 py-2 text-sm"
+        <div className="space-y-2">
+          {history.map((v) => (
+            <div
+              key={v.version}
+              className="flex justify-between items-center bg-white p-2 border rounded"
             >
-              Send
-            </button>
-          </div>
+              <div className="text-sm">
+                <span className="font-semibold">
+                  v{v.version}
+                </span>
+              </div>
+
+              <button
+                onClick={() => rollback(v.version)}
+                className="text-blue-600 text-sm"
+              >
+                Restore
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
     </div>
   );
