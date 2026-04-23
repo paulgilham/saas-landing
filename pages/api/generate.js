@@ -1,26 +1,22 @@
-import { BLUEPRINTS } from "@/lib/blueprints";
-import { MODULE_FAMILIES } from "@/lib/modules";
-import { resolveModules } from "@/lib/resolveModules";
-import { applyTierOverlay } from "@/lib/tierOverlay";
-import { kv } from "@/lib/kv"; // if you use KV
-
+import { generateBlueprint } from "@/lib/blueprintEngine";
+import { kv } from "@/lib/kv";
 import { generateModuleContent } from "@/lib/ai";
 
 // ------------------------------------
-// VERTICAL DETECTION
+// VERTICAL DETECTION (CAN STAY OR MOVE LATER)
 // ------------------------------------
 function detectVertical(prompt) {
   const t = prompt.toLowerCase();
 
-  if (t.includes("hair") || t.includes("salon")) return "personal_services";
-  if (t.includes("builder") || t.includes("construction")) return "home_services";
-  if (t.includes("agency") || t.includes("consult")) return "professional_services";
+  if (t.includes("hair") || t.includes("salon")) return "hair_beauty";
+  if (t.includes("builder") || t.includes("construction")) return "construction_trades";
+  if (t.includes("agency") || t.includes("consult")) return "agencies_marketing";
 
   return "default";
 }
 
 // ------------------------------------
-// TIER CONTENT INTELLIGENCE
+// CONTENT DEPTH (TIER INTELLIGENCE)
 // ------------------------------------
 function getContentDepth(tier) {
   if (tier === "simple") return "basic";
@@ -30,12 +26,12 @@ function getContentDepth(tier) {
 }
 
 // ------------------------------------
-// MODULE PROMPT ENGINE (KEY ADDITION)
+// MODULE PROMPT ENGINE
 // ------------------------------------
 function buildModulePrompt({
   module,
   prompt,
-  vertical,
+  category,
   tier
 }) {
   const depth = getContentDepth(tier);
@@ -46,8 +42,8 @@ You are generating website content.
 Business context:
 ${prompt}
 
-Vertical:
-${vertical}
+Category:
+${category}
 
 Module:
 ${module}
@@ -56,16 +52,16 @@ Depth level:
 ${depth}
 
 Rules:
-- Be natural and conversion focused
-- Match business type tone
-- Do NOT output JSON
-- Return structured fields only
+- Do not output JSON
+- Do not create structure
+- Only generate module content
+- Keep tone appropriate for business category
 
-If module is:
-- hero → focus on value proposition
-- services → focus on clarity + listing
-- testimonials → focus on trust
-- CTA → focus on conversion
+Module focus:
+- hero → value proposition
+- services → clarity + offerings
+- testimonials → trust
+- CTA → conversion
 `;
 }
 
@@ -74,36 +70,42 @@ If module is:
 // ------------------------------------
 export default async function handler(req, res) {
   try {
-    const { prompt, tier = "medium", slug } = req.body;
+    const { prompt, tier = "medium", slug, modifiers = [] } = req.body;
 
+    // 🟢 1. CATEGORY (LAYER 1 via blueprintEngine internally)
     const vertical = detectVertical(prompt);
 
-    // 1. BLUEPRINT
-    const blueprint =
-      BLUEPRINTS?.[vertical]?.[tier] ||
-      BLUEPRINTS?.default?.[tier] ||
-      [];
+    // 🟢 2. STRUCTURE (NOW COMES FROM blueprintEngine.js)
+    const blueprintResult = generateBlueprint({
+      prompt,
+      tier,
+      modifiers
+    });
 
-    // 2. MODULES
-    const modules = resolveModules(blueprint);
+    const { type: category, layout: modules } = blueprintResult;
 
-    // 3. STRUCTURE
+    // 🟢 3. STRUCTURE OUTPUT
     const structure = {
       home: modules
     };
 
-    // 4. CONTENT GENERATION (INTELLIGENT LAYER RESTORED)
+    // 🟢 4. CONTENT GENERATION (AI ONLY FILLS MODULES)
     const content = { home: {} };
 
     for (const module of modules) {
       const promptForModule = buildModulePrompt({
         module,
         prompt,
-        vertical,
+        category,
         tier
       });
 
-      const result = await generateModuleContent(promptForModule);
+      const result = await generateModuleContent({
+        module,
+        prompt: promptForModule,
+        category,
+        tier
+      });
 
       content.home[module] =
         typeof result === "object" && result
@@ -111,31 +113,30 @@ export default async function handler(req, res) {
           : { text: String(result || "") };
     }
 
-    // 5. SITE OBJECT
+    // 🟢 5. FINAL SITE OBJECT
     const site = {
       slug,
       prompt,
-      vertical,
+      category,
       tier,
+      modifiers,
       structure,
       content,
       createdAt: Date.now()
     };
 
-    // 6. VERSIONING (RESTORED IF KV EXISTS)
+    // 🟢 6. VERSIONING (KV STORAGE)
     if (kv) {
       const key = `site:${slug}`;
       const existing = (await kv.get(key)) || [];
 
-      const updated = [
-        ...existing,
-        site
-      ];
+      const updated = [...existing, site];
 
       await kv.set(key, updated);
     }
 
     return res.status(200).json(site);
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Generation failed" });
