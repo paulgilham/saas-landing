@@ -4,7 +4,7 @@ import { generateModuleContent } from "@/lib/contentEngine";
 import { stripHtmlDeep } from "@/lib/sanitizeContent";
 
 // ------------------------------------
-// VERTICAL DETECTION (OPTIONAL HINT ONLY)
+// VERTICAL DETECTION (HINT ONLY)
 // ------------------------------------
 function detectVertical(prompt) {
   const t = prompt.toLowerCase();
@@ -17,13 +17,65 @@ function detectVertical(prompt) {
 }
 
 // ------------------------------------
+// SCHEMA NORMALISER (CRITICAL)
+// ------------------------------------
+function normalizeSite(site) {
+  return {
+    schemaVersion: 2,
+
+    slug: site.slug,
+    prompt: site.prompt,
+    category: site.category,
+    tier: site.tier,
+    modifiers: site.modifiers || [],
+
+    structure: site.structure || { home: [] },
+    content: normalizeContent(site.content),
+
+    createdAt: site.createdAt || Date.now()
+  };
+}
+
+// ------------------------------------
+// CONTENT NORMALISER (CRITICAL)
+// ------------------------------------
+function normalizeContent(content = {}) {
+  const clean = { home: {} };
+
+  if (!content?.home) return clean;
+
+  for (const key in content.home) {
+    const value = content.home[key];
+
+    // OLD STRING HTML FORMAT (LEGACY FIX)
+    if (typeof value === "string") {
+      clean.home[key] = {
+        headline: value.replace(/<[^>]*>/g, "")
+      };
+      continue;
+    }
+
+    // NEW CONTENT ENGINE FORMAT
+    if (value?.data) {
+      clean.home[key] = stripHtmlDeep(value.data);
+      continue;
+    }
+
+    // ALREADY CLEAN OBJECT
+    clean.home[key] = stripHtmlDeep(value);
+  }
+
+  return clean;
+}
+
+// ------------------------------------
 // MAIN GENERATION HANDLER
 // ------------------------------------
 export default async function handler(req, res) {
   try {
     const { prompt, tier = "medium", slug, modifiers = [] } = req.body;
 
-    // 🟢 1. STRUCTURE GENERATION (ONLY SOURCE OF TRUTH)
+    // 🟢 1. STRUCTURE (BLUEPRINT ENGINE IS SOURCE OF TRUTH)
     const blueprintResult = generateBlueprint({
       prompt,
       tier,
@@ -32,16 +84,14 @@ export default async function handler(req, res) {
 
     const { type: category, layout: modules } = blueprintResult;
 
-    // 🟢 2. STRUCTURE OUTPUT (NO AI HERE)
     const structure = {
       home: modules
     };
 
-    // 🟢 3. CONTENT GENERATION (STRICTLY ISOLATED LAYER)
+    // 🟢 2. CONTENT GENERATION (STRICT ISOLATED LAYER)
     const content = { home: {} };
 
     for (const module of modules) {
-      // ONLY PASS CONTEXT — NO PROMPT BUILDING HERE
       const result = await generateModuleContent({
         module,
         category,
@@ -50,12 +100,12 @@ export default async function handler(req, res) {
         prompt
       });
 
-      // 🧠 HARD BOUNDARY ENFORCEMENT
-      content.home[module] = stripHtmlDeep(result);
+      // 🧠 FIX: correct extraction from contentEngine
+      content.home[module] = stripHtmlDeep(result.data || result);
     }
 
-    // 🟢 4. FINAL SITE OBJECT (IMMUTABLE STRUCTURE)
-    const site = {
+    // 🟢 3. SITE OBJECT
+    const site = normalizeSite({
       slug,
       prompt,
       category,
@@ -64,9 +114,9 @@ export default async function handler(req, res) {
       structure,
       content,
       createdAt: Date.now()
-    };
+    });
 
-    // 🟢 5. VERSIONING (KV STORAGE)
+    // 🟢 4. KV VERSIONING (SAFE APPEND)
     if (kv) {
       const key = `site:${slug}`;
       const existing = (await kv.get(key)) || [];
