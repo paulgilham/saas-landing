@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { modules } from "../../lib/modules";
 import { reactModules } from "../../lib/reactModules";
+import { normalizeContent } from "../../lib/normalizeContent";
 
 export default function SitePage() {
   const router = useRouter();
@@ -45,8 +46,18 @@ export default function SitePage() {
     if (!site?.structure?.home) return null;
 
     return site.structure.home.map((moduleName, i) => {
-      // ✅ FIX: correct content path (FLAT STRUCTURE)
-      const data = site.content?.[moduleName] || {};
+      const moduleFn = modules[moduleName];
+
+      if (!moduleFn) {
+        console.warn("Missing module:", moduleName);
+        return null;
+      }
+
+      // =====================================
+      // 🧠 CRITICAL FIX: NORMALIZATION LAYER
+      // =====================================
+      const rawData = site.content?.[moduleName] || {};
+      const data = normalizeContent(moduleName, rawData);
 
       // -------------------------
       // REACT MODE (FUTURE)
@@ -65,18 +76,11 @@ export default function SitePage() {
       // -------------------------
       // STRING MODE (CURRENT)
       // -------------------------
-      const fn = modules[moduleName];
-
-      if (!fn) {
-        console.warn("Missing string module:", moduleName);
-        return null;
-      }
-
       return (
         <div
           key={i}
           dangerouslySetInnerHTML={{
-            __html: fn(data),
+            __html: moduleFn(data),
           }}
         />
       );
@@ -87,22 +91,14 @@ export default function SitePage() {
   // LOADING STATE
   // -----------------------------------
   if (loading) {
-    return (
-      <div className="p-10 text-center">
-        Loading...
-      </div>
-    );
+    return <div className="p-10 text-center">Loading...</div>;
   }
 
   // -----------------------------------
   // ERROR STATE
   // -----------------------------------
   if (!site) {
-    return (
-      <div className="p-10 text-center">
-        Site not found
-      </div>
-    );
+    return <div className="p-10 text-center">Site not found</div>;
   }
 
   // -----------------------------------
