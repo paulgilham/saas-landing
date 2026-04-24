@@ -79,8 +79,6 @@ export default function SitePage() {
 
       if (data?.site) {
         setSite(data.site);
-
-        // 🔥 IMPORTANT: sync history after regenerate
         loadHistory();
       }
     } catch (err) {
@@ -108,31 +106,46 @@ export default function SitePage() {
   };
 
   // -----------------------------------
-  // SAFE HELPERS
+  // 🔒 HARD SAFETY NORMALISER (FIX 2 CORE)
   // -----------------------------------
-  const safeObject = (val) => {
-    if (!val || typeof val !== "object") return {};
-    if (Array.isArray(val)) return {};
-    return val;
+  const normalizeModuleData = (input) => {
+    if (!input) return {};
+
+    // 🚫 BLOCK RAW HTML STRINGS (THIS FIXES YOUR ISSUE)
+    if (typeof input === "string") return {};
+
+    // 🚫 BLOCK HTML OBJECT STRINGS
+    if (typeof input === "object" && input?.toString?.().includes("<section")) {
+      return {};
+    }
+
+    // 🔁 HANDLE NEW FORMAT: { data: {...} }
+    if (input?.data && typeof input.data === "object") {
+      return input.data;
+    }
+
+    // 🔁 HANDLE LEGACY FLAT OBJECT
+    if (typeof input === "object") {
+      return input;
+    }
+
+    return {};
   };
 
   // -----------------------------------
-  // MODULE RENDERER (FIXED)
+  // MODULE RENDERER (HARDENED)
   // -----------------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
 
     return structure.map((moduleName, i) => {
       const Component = modules[moduleName];
-
       if (!Component) return null;
 
-      // 🔥 CRITICAL FIX: extract .data properly
       const rawData = site?.content?.home?.[moduleName];
-      const data = safeObject(rawData?.data);
 
-      // 🔥 HARD BLOCK: prevent HTML string injection
-      if (typeof data === "string") return null;
+      // 🔥 FIX 2 APPLIED HERE (CRITICAL)
+      const data = normalizeModuleData(rawData);
 
       return (
         <div
@@ -153,7 +166,7 @@ export default function SitePage() {
             })()}
           </div>
 
-          {/* MODULE CONTROLS */}
+          {/* CONTROLS */}
           {activeModule === moduleName && (
             <div className="absolute top-2 right-2 flex gap-2">
               <button
@@ -186,7 +199,6 @@ export default function SitePage() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
 
-      {/* TOP BAR */}
       <div className="sticky top-0 bg-white border-b p-4 flex justify-between">
         <div className="font-semibold">
           {site.slug} • {site.vertical} • {site.tier}
@@ -200,23 +212,17 @@ export default function SitePage() {
         </button>
       </div>
 
-      {/* MAIN CONTENT */}
       <div>{renderModules()}</div>
 
-      {/* HISTORY PANEL */}
       <div className="border-t p-4 bg-gray-50">
         <h3 className="font-semibold mb-3">Version History</h3>
 
         {loadingHistory && (
-          <div className="text-sm text-gray-500">
-            Loading history...
-          </div>
+          <div className="text-sm text-gray-500">Loading history...</div>
         )}
 
         {!loadingHistory && history.length === 0 && (
-          <div className="text-sm text-gray-500">
-            No history found
-          </div>
+          <div className="text-sm text-gray-500">No history found</div>
         )}
 
         <div className="space-y-2">
@@ -225,9 +231,7 @@ export default function SitePage() {
               key={v.version}
               className="flex justify-between items-center bg-white p-2 border rounded"
             >
-              <div className="text-sm font-semibold">
-                v{v.version}
-              </div>
+              <div className="text-sm font-semibold">v{v.version}</div>
 
               <button
                 onClick={() => rollback(v.version)}
