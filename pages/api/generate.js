@@ -16,23 +16,39 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🧠 1. TRAIT EXTRACTION (NEW)
-    const traits = extractTraits(prompt);
+    // -----------------------------
+    // 🧠 1. INITIAL BLUEPRINT (CATEGORY ONLY)
+    // -----------------------------
+    const initialBlueprint = generateBlueprint({
+      prompt,
+      tier
+    });
 
-    // 🧠 2. BLUEPRINT (STRUCTURE)
-    const blueprint = generateBlueprint({
+    const category = initialBlueprint.type;
+
+    // -----------------------------
+    // 🧠 2. TRAIT EXTRACTION (WITH CATEGORY)
+    // -----------------------------
+    const traits = extractTraits(prompt, category);
+
+    // -----------------------------
+    // 🧠 3. FINAL BLUEPRINT (TRAIT-AWARE)
+    // -----------------------------
+    const finalBlueprint = generateBlueprint({
       prompt,
       tier,
       traits
     });
 
-    const { type: category, layout: modules } = blueprint;
+    const { layout: modules } = finalBlueprint;
 
     const structure = {
       home: modules
     };
 
-    // 🧠 3. CONTENT GENERATION (STRICT JSON ONLY)
+    // -----------------------------
+    // 🧠 4. CONTENT GENERATION (STRICT JSON)
+    // -----------------------------
     const content = { home: {} };
 
     for (const module of modules) {
@@ -41,7 +57,7 @@ export default async function handler(req, res) {
         category,
         tier,
         prompt,
-        traits // 🔥 pass traits into content engine too
+        traits
       });
 
       if (result?.data && typeof result.data === "object") {
@@ -51,20 +67,24 @@ export default async function handler(req, res) {
       }
     }
 
-    // 🧠 4. FINAL SITE OBJECT
+    // -----------------------------
+    // 🧠 5. FINAL SITE OBJECT
+    // -----------------------------
     const site = {
-      schemaVersion: 3, // bump version (important)
+      schemaVersion: 3,
       slug,
       prompt,
       category,
       tier,
-      traits, // 🔥 CRITICAL FOR RENDER ENGINE
+      traits,
       structure,
       content,
       createdAt: Date.now()
     };
 
-    // 🧠 5. KV STORAGE (VERSIONED ARRAY)
+    // -----------------------------
+    // 🧠 6. KV STORAGE (VERSIONED)
+    // -----------------------------
     const key = `site:${slug}`;
     const existing = (await kv.get(key)) || [];
 
