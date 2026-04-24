@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { modules } from "../../lib/modules";
+import { moduleRegistry } from "../../lib/moduleRegistry";
 import { validateModule } from "../../lib/validateModule";
 import { applyFallbacks } from "../../lib/contentSchema";
 
@@ -23,11 +23,14 @@ export default function SitePage() {
     load();
   }, [slug]);
 
+  // -----------------------------
+  // FIXED RENDERER (STEP 2)
+  // -----------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
 
     return structure.map((moduleName, i) => {
-      const Component = modules[moduleName];
+      const Component = moduleRegistry[moduleName];
       if (!Component) return null;
 
       const raw = site?.content?.home?.[moduleName];
@@ -38,8 +41,8 @@ export default function SitePage() {
       const data = applyFallbacks(moduleName, valid);
 
       return (
-        <div key={i}>
-          {Component(data)}
+        <div key={`${moduleName}-${i}`}>
+          <Component data={data} />
         </div>
       );
     });
