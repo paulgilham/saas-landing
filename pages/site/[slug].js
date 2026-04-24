@@ -79,6 +79,9 @@ export default function SitePage() {
 
       if (data?.site) {
         setSite(data.site);
+
+        // 🔥 IMPORTANT: sync history after regenerate
+        loadHistory();
       }
     } catch (err) {
       console.error(err);
@@ -105,16 +108,16 @@ export default function SitePage() {
   };
 
   // -----------------------------------
-  // SAFE HELPERS (CRITICAL)
+  // SAFE HELPERS
   // -----------------------------------
   const safeObject = (val) => {
     if (!val || typeof val !== "object") return {};
-    if (Array.isArray(val)) return val;
+    if (Array.isArray(val)) return {};
     return val;
   };
 
   // -----------------------------------
-  // MODULE RENDERER (HARDENED)
+  // MODULE RENDERER (FIXED)
   // -----------------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
@@ -124,8 +127,12 @@ export default function SitePage() {
 
       if (!Component) return null;
 
+      // 🔥 CRITICAL FIX: extract .data properly
       const rawData = site?.content?.home?.[moduleName];
-      const data = safeObject(rawData);
+      const data = safeObject(rawData?.data);
+
+      // 🔥 HARD BLOCK: prevent HTML string injection
+      if (typeof data === "string") return null;
 
       return (
         <div
@@ -153,9 +160,7 @@ export default function SitePage() {
                 onClick={() => regenerateModule(moduleName)}
                 className="bg-black text-white text-xs px-3 py-1 rounded opacity-80 hover:opacity-100"
               >
-                {loadingModule === moduleName
-                  ? "Improving..."
-                  : "Improve"}
+                {loadingModule === moduleName ? "Improving..." : "Improve"}
               </button>
             </div>
           )}
@@ -220,8 +225,8 @@ export default function SitePage() {
               key={v.version}
               className="flex justify-between items-center bg-white p-2 border rounded"
             >
-              <div className="text-sm">
-                <span className="font-semibold">v{v.version}</span>
+              <div className="text-sm font-semibold">
+                v{v.version}
               </div>
 
               <button
