@@ -1,6 +1,7 @@
 import { generateBlueprint } from "@/lib/blueprintEngine";
 import { kv } from "@/lib/kv";
 import { generateModuleContent } from "@/lib/contentEngine";
+import { extractTraits } from "@/lib/traitEngine";
 
 // ------------------------------------
 // MAIN HANDLER
@@ -9,8 +10,21 @@ export default async function handler(req, res) {
   try {
     const { prompt, tier = "medium", slug } = req.body;
 
-    // 🟢 1. BLUEPRINT (STRUCTURE ONLY)
-    const blueprint = generateBlueprint({ prompt, tier });
+    if (!prompt || !slug) {
+      return res.status(400).json({
+        error: "prompt and slug are required"
+      });
+    }
+
+    // 🧠 1. TRAIT EXTRACTION (NEW)
+    const traits = extractTraits(prompt);
+
+    // 🧠 2. BLUEPRINT (STRUCTURE)
+    const blueprint = generateBlueprint({
+      prompt,
+      tier,
+      traits
+    });
 
     const { type: category, layout: modules } = blueprint;
 
@@ -18,7 +32,7 @@ export default async function handler(req, res) {
       home: modules
     };
 
-    // 🟢 2. CONTENT GENERATION (STRICT PIPELINE)
+    // 🧠 3. CONTENT GENERATION (STRICT JSON ONLY)
     const content = { home: {} };
 
     for (const module of modules) {
@@ -26,30 +40,31 @@ export default async function handler(req, res) {
         module,
         category,
         tier,
-        prompt
+        prompt,
+        traits // 🔥 pass traits into content engine too
       });
 
-      // 🔒 ONLY ACCEPT VALID OUTPUT FROM CONTENT ENGINE
       if (result?.data && typeof result.data === "object") {
         content.home[module] = result.data;
       } else {
-        content.home[module] = {};
+        content.home[module] = {}; // strict fallback
       }
     }
 
-    // 🟢 3. FINAL SITE OBJECT (NO SANITISER HERE)
+    // 🧠 4. FINAL SITE OBJECT
     const site = {
-      schemaVersion: 2,
+      schemaVersion: 3, // bump version (important)
       slug,
       prompt,
       category,
       tier,
+      traits, // 🔥 CRITICAL FOR RENDER ENGINE
       structure,
       content,
       createdAt: Date.now()
     };
 
-    // 🟢 4. KV STORAGE (VERSIONED)
+    // 🧠 5. KV STORAGE (VERSIONED ARRAY)
     const key = `site:${slug}`;
     const existing = (await kv.get(key)) || [];
 
