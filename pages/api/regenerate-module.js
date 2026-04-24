@@ -12,12 +12,38 @@ const openai = new OpenAI({
 function safeParse(text) {
   try {
     return JSON.parse(
-      text.replace(/```json/g, "").replace(/```/g, "").trim()
+      text
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim()
     );
   } catch (e) {
     console.error("Parse error:", text);
     return null;
   }
+}
+
+// -----------------------------
+// STRICT CONTRACT VALIDATION
+// -----------------------------
+function validateAgainstContract(data, contract) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return null;
+  }
+
+  const required = contract?.required || [];
+
+  for (const key of required) {
+    if (
+      data[key] === undefined ||
+      data[key] === null ||
+      data[key] === ""
+    ) {
+      return null;
+    }
+  }
+
+  return data;
 }
 
 // -----------------------------
@@ -52,15 +78,15 @@ export default async function handler(req, res) {
     }
 
     // -------------------------
-    // 2. VALIDATE MODULE
+    // 2. VALIDATE MODULE CONTRACT EXISTS
     // -------------------------
-    if (!moduleContracts[moduleName]) {
+    const contract = moduleContracts[moduleName];
+
+    if (!contract) {
       return res.status(400).json({
         error: "Invalid module name"
       });
     }
-
-    const contract = moduleContracts[moduleName];
 
     // -------------------------
     // 3. AI REGENERATION (STRICT CONTRACT)
@@ -73,38 +99,48 @@ export default async function handler(req, res) {
           content: `
 You are regenerating ONLY ONE module of a website.
 
-You MUST follow this schema EXACTLY:
-${JSON.stringify(contract)}
-
-RULES:
+CRITICAL RULES:
 - output ONLY valid JSON
 - no markdown
-- no extra keys
 - no explanations
-- do NOT change structure
-- only improve content quality
+- no extra keys
+- MUST match schema exactly
+
+SCHEMA:
+${JSON.stringify(contract, null, 2)}
           `
         },
         {
           role: "user",
           content: `
 Module: ${moduleName}
-Business context: ${JSON.stringify(site.content?.[moduleName] || {})}
-Instruction: ${instruction || "Improve this module content"}
+
+Current content:
+${JSON.stringify(site.content?.[moduleName] || {}, null, 2)}
+
+Instruction:
+${instruction || "Improve this module content while keeping structure identical"}
           `
         }
       ],
       temperature: 0.5
     });
 
-    const newModuleData = safeParse(response.choices[0].message.content);
+    const parsed = safeParse(response.choices[0].message.content);
+
+    // -------------------------
+    // 4. STRICT VALIDATION (IMPORTANT)
+    // -------------------------
+    const newModuleData = validateAgainstContract(parsed, contract);
 
     if (!newModuleData) {
-      return res.status(500).json({ error: "Invalid AI output" });
+      return res.status(500).json({
+        error: "AI output failed schema validation"
+      });
     }
 
     // -------------------------
-    // 4. UPDATE ONLY THIS MODULE
+    // 5. UPDATE ONLY THIS MODULE
     // -------------------------
     const updatedSite = {
       ...site,
@@ -116,7 +152,7 @@ Instruction: ${instruction || "Improve this module content"}
     };
 
     // -------------------------
-    // 5. SAVE NEW VERSION (IMMUTABLE HISTORY)
+    // 6. SAVE NEW VERSION (IMMUTABLE HISTORY)
     // -------------------------
     const newVersion = currentVersion + 1;
     const newKey = `site:${businessId}:v${newVersion}`;
@@ -124,7 +160,7 @@ Instruction: ${instruction || "Improve this module content"}
     await kv.set(newKey, updatedSite);
 
     // -------------------------
-    // 6. UPDATE SLUG POINTER
+    // 7. UPDATE SLUG POINTER
     // -------------------------
     await kv.set(`slug:${slug}`, {
       slug,
@@ -144,6 +180,8 @@ Instruction: ${instruction || "Improve this module content"}
 
   } catch (err) {
     console.error("REGEN ERROR:", err);
-    return res.status(500).json({ error: "Module regeneration failed" });
+    return res.status(500).json({
+      error: "Module regeneration failed"
+    });
   }
 }
