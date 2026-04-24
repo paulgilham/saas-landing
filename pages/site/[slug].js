@@ -3,14 +3,12 @@ import { useEffect, useState } from "react";
 
 import { moduleRegistry } from "@/lib/moduleRegistry";
 import { LAYOUT_RULES, MODULE_PRIORITY } from "@/lib/layoutRules";
-import { getUIIntensity } from "@/lib/uiIntensity";
 
 export default function SitePage() {
   const router = useRouter();
   const { slug } = router.query;
 
   const [site, setSite] = useState(null);
-  const [traits, setTraits] = useState([]);
 
   useEffect(() => {
     if (!slug) return;
@@ -18,94 +16,101 @@ export default function SitePage() {
     const load = async () => {
       const res = await fetch(`/api/site?slug=${slug}`);
       const data = await res.json();
-
-      const loaded = data.site || data;
-
-      setSite(loaded);
-      setTraits(loaded?.traits || []); // ✅ NEW
+      setSite(data.site);
     };
 
     load();
   }, [slug]);
 
   // -----------------------------
-  // 🧠 HYBRID VISUAL ENGINE
-  // (tier + priority + traits)
+  // 🧠 BASE LAYOUT STYLE
   // -----------------------------
-  const getLayoutStyle = (moduleName, tier, traits) => {
-    const rules = LAYOUT_RULES[tier] || LAYOUT_RULES.medium;
-
-    const priority = MODULE_PRIORITY[moduleName] || 1;
-
-    // 🔥 NEW: trait-driven UI modulation
-    const ui = getUIIntensity(traits);
-
-    const spacingMap = {
-      tight: "py-6",
-      normal: rules.sectionSpacing,
-      relaxed: "py-20"
-    };
-
-    const widthMap = {
-      low: "max-w-6xl",
-      normal: rules.containerWidth,
-      high: "max-w-4xl"
-    };
-
-    return {
-      sectionSpacing: spacingMap[ui.spacing],
-      containerWidth: widthMap[ui.density],
-      priority
-    };
+  const getLayoutStyle = (tier) => {
+    return LAYOUT_RULES[tier] || LAYOUT_RULES.medium;
   };
 
   // -----------------------------
-  // RENDER MODULES (FINAL)
+  // 🧠 TRAIT-AWARE PRIORITY ENGINE
+  // -----------------------------
+  const getPriority = (moduleName, traits = []) => {
+    let base = MODULE_PRIORITY[moduleName] || 1;
+
+    // SAFE bounded boosts
+    if (traits.includes("conversion_focus") && moduleName === "cta") {
+      base += 2;
+    }
+
+    if (traits.includes("trust_heavy") && moduleName === "testimonials") {
+      base += 1;
+    }
+
+    if (traits.includes("visual_rich") && moduleName === "gallery") {
+      base += 1;
+    }
+
+    if (traits.includes("service_heavy") && moduleName === "services") {
+      base += 1;
+    }
+
+    if (traits.includes("info_heavy") && moduleName === "faq") {
+      base += 1;
+    }
+
+    return base;
+  };
+
+  // -----------------------------
+  // 🧠 ORDERING ENGINE (SAFE)
+  // -----------------------------
+  const orderModules = (structure, traits) => {
+    return [...structure].sort((a, b) => {
+      // 🔒 HARD LOCKS
+      if (a === "hero") return -1;
+      if (b === "hero") return 1;
+
+      if (a === "contact") return 1;
+      if (b === "contact") return -1;
+
+      // 🧠 PRIORITY SORT
+      return (
+        getPriority(b, traits) -
+        getPriority(a, traits)
+      );
+    });
+  };
+
+  // -----------------------------
+  // 🎨 RENDER
   // -----------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
     const tier = site?.tier || "medium";
+    const traits = site?.traits || [];
 
-    return structure.map((moduleName, i) => {
+    const layout = getLayoutStyle(tier);
+    const ordered = orderModules(structure, traits);
+
+    return ordered.map((moduleName, i) => {
       const Component = moduleRegistry[moduleName];
       if (!Component) return null;
 
-      const rawData = site?.content?.home?.[moduleName] || {};
-
-      const layout = getLayoutStyle(moduleName, tier, traits);
+      const data = site?.content?.home?.[moduleName] || {};
 
       return (
         <div
           key={`${moduleName}-${i}`}
-          className={`
-            w-full
-            ${layout.sectionSpacing}
-            flex justify-center
-          `}
-          data-priority={layout.priority}
+          className={`w-full ${layout.sectionSpacing} flex justify-center`}
         >
           <div className={`w-full ${layout.containerWidth}`}>
-            <Component
-              data={rawData}
-              traits={traits}          // ✅ PASS DOWN
-              moduleName={moduleName} // future-proof
-            />
+            <Component data={data} />
           </div>
         </div>
       );
     });
   };
 
-  // -----------------------------
-  // LOADING
-  // -----------------------------
-  if (!site) {
-    return <div className="p-10 text-center">Loading...</div>;
-  }
+  if (!site) return <div className="p-10">Loading...</div>;
 
-  // -----------------------------
-  // UI
-  // -----------------------------
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {renderModules()}
