@@ -37,7 +37,10 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({
+          prompt,
+          tier: "medium"
+        })
       });
 
       const data = await res.json();
@@ -45,16 +48,16 @@ export default function Home() {
       console.log("API RESPONSE:", data);
 
       // -----------------------------
-      // SAFE CHECK (PREVENT /undefined BUG)
+      // FIXED VALIDATION (NO MORE siteId BUG)
       // -----------------------------
-      if (!data.siteId) {
-        alert("Generation failed: no siteId returned");
+      if (!data.slug) {
+        alert("Generation failed: missing slug");
         setLoading(false);
         return;
       }
 
       // redirect to generated site
-      window.location.href = `/site/${data.siteId}`;
+      window.location.href = `/site/${data.slug}`;
 
     } catch (err) {
       console.error("Frontend error:", err);
@@ -126,10 +129,8 @@ export default function Home() {
             Type your business. Watch it build live.
           </p>
 
-          {/* DEMO */}
           <div className="max-w-3xl mx-auto rounded-2xl shadow-2xl border dark:border-gray-800 overflow-hidden">
 
-            {/* INPUT */}
             <div className="bg-gray-100 dark:bg-gray-800 p-4 text-left">
               <input
                 id="promptInput"
@@ -138,7 +139,6 @@ export default function Home() {
               />
             </div>
 
-            {/* BUTTON */}
             <div className="p-4 text-left">
               <button
                 onClick={handleGenerate}
@@ -149,12 +149,10 @@ export default function Home() {
               </button>
             </div>
 
-            {/* LOADER */}
             <div id="loader" className="hidden h-1 bg-gray-200 dark:bg-gray-800">
               <div id="progress" className="h-1 bg-primary w-0"></div>
             </div>
 
-            {/* STATUS */}
             <div id="steps" className="hidden text-left px-4 py-3 text-sm text-gray-500 space-y-1">
               <div>Generating layout...</div>
               <div id="s2" className="hidden">Writing content...</div>
