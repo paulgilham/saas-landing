@@ -1,6 +1,8 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
 import { modules } from "../../lib/modules";
+import { validateModule } from "../../lib/validateModule";
 
 export default function SitePage() {
   const router = useRouter();
@@ -8,12 +10,6 @@ export default function SitePage() {
 
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const [activeModule, setActiveModule] = useState(null);
-  const [loadingModule, setLoadingModule] = useState(null);
-
-  const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // -----------------------------------
   // FETCH SITE
@@ -28,7 +24,7 @@ export default function SitePage() {
 
         setSite(data.site || data || null);
       } catch (err) {
-        console.error(err);
+        console.error("FETCH ERROR:", err);
       } finally {
         setLoading(false);
       }
@@ -38,212 +34,59 @@ export default function SitePage() {
   }, [slug]);
 
   // -----------------------------------
-  // LOAD HISTORY
-  // -----------------------------------
-  const loadHistory = async () => {
-    setLoadingHistory(true);
-
-    try {
-      const res = await fetch(`/api/site-history?slug=${slug}`);
-      const data = await res.json();
-      setHistory(data.versions || []);
-    } catch (err) {
-      console.error("history error", err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  useEffect(() => {
-    if (slug) loadHistory();
-  }, [slug]);
-
-  // -----------------------------------
-  // MODULE REGENERATION
-  // -----------------------------------
-  const regenerateModule = async (moduleName, instruction = "") => {
-    setLoadingModule(moduleName);
-
-    try {
-      const res = await fetch("/api/regenerate-module", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          moduleName,
-          instruction
-        })
-      });
-
-      const data = await res.json();
-
-      if (data?.site) {
-        setSite(data.site);
-        loadHistory();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingModule(null);
-    }
-  };
-
-  // -----------------------------------
-  // ROLLBACK
-  // -----------------------------------
-  const rollback = async (version) => {
-    try {
-      await fetch("/api/rollback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, version })
-      });
-
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // -----------------------------------
-  // 🔒 HARD SAFETY NORMALISER (FIX 2 CORE)
-  // -----------------------------------
-  const normalizeModuleData = (input) => {
-    if (!input) return {};
-
-    // 🚫 BLOCK RAW HTML STRINGS (THIS FIXES YOUR ISSUE)
-    if (typeof input === "string") return {};
-
-    // 🚫 BLOCK HTML OBJECT STRINGS
-    if (typeof input === "object" && input?.toString?.().includes("<section")) {
-      return {};
-    }
-
-    // 🔁 HANDLE NEW FORMAT: { data: {...} }
-    if (input?.data && typeof input.data === "object") {
-      return input.data;
-    }
-
-    // 🔁 HANDLE LEGACY FLAT OBJECT
-    if (typeof input === "object") {
-      return input;
-    }
-
-    return {};
-  };
-
-  // -----------------------------------
-  // MODULE RENDERER (HARDENED)
+  // MODULE RENDERER (REACT ONLY)
   // -----------------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
 
     return structure.map((moduleName, i) => {
       const Component = modules[moduleName];
+
       if (!Component) return null;
 
       const rawData = site?.content?.home?.[moduleName];
 
-      // 🔥 FIX 2 APPLIED HERE (CRITICAL)
-      const data = normalizeModuleData(rawData);
+      // 🔒 STRICT VALIDATION (STEP 4 FIX APPLIED)
+      const data = validateModule(moduleName, rawData);
+
+      if (!data) {
+        console.warn(`Invalid module data for: ${moduleName}`);
+        return null;
+      }
 
       return (
-        <div
-          key={`${moduleName}-${i}`}
-          className="relative group border-b border-gray-100"
-          onMouseEnter={() => setActiveModule(moduleName)}
-          onMouseLeave={() => setActiveModule(null)}
-        >
-          {/* MODULE */}
-          <div>
-            {(() => {
-              try {
-                return Component(data);
-              } catch (err) {
-                console.error("Render error:", moduleName, err);
-                return null;
-              }
-            })()}
-          </div>
-
-          {/* CONTROLS */}
-          {activeModule === moduleName && (
-            <div className="absolute top-2 right-2 flex gap-2">
-              <button
-                onClick={() => regenerateModule(moduleName)}
-                className="bg-black text-white text-xs px-3 py-1 rounded opacity-80 hover:opacity-100"
-              >
-                {loadingModule === moduleName ? "Improving..." : "Improve"}
-              </button>
-            </div>
-          )}
+        <div key={`${moduleName}-${i}`}>
+          <Component {...data} />
         </div>
       );
     });
   };
 
   // -----------------------------------
-  // LOADING STATE
+  // STATES
   // -----------------------------------
   if (loading) {
-    return <div className="p-10 text-center">Loading...</div>;
+    return (
+      <div className="p-10 text-center">
+        Loading...
+      </div>
+    );
   }
 
   if (!site) {
-    return <div className="p-10 text-center">Site not found</div>;
+    return (
+      <div className="p-10 text-center">
+        Site not found
+      </div>
+    );
   }
 
   // -----------------------------------
-  // UI
+  // RENDER
   // -----------------------------------
   return (
     <div className="min-h-screen bg-white text-gray-900">
-
-      <div className="sticky top-0 bg-white border-b p-4 flex justify-between">
-        <div className="font-semibold">
-          {site.slug} • {site.vertical} • {site.tier}
-        </div>
-
-        <button
-          onClick={loadHistory}
-          className="bg-gray-900 text-white px-4 py-2 rounded"
-        >
-          Refresh History
-        </button>
-      </div>
-
-      <div>{renderModules()}</div>
-
-      <div className="border-t p-4 bg-gray-50">
-        <h3 className="font-semibold mb-3">Version History</h3>
-
-        {loadingHistory && (
-          <div className="text-sm text-gray-500">Loading history...</div>
-        )}
-
-        {!loadingHistory && history.length === 0 && (
-          <div className="text-sm text-gray-500">No history found</div>
-        )}
-
-        <div className="space-y-2">
-          {history.map((v) => (
-            <div
-              key={v.version}
-              className="flex justify-between items-center bg-white p-2 border rounded"
-            >
-              <div className="text-sm font-semibold">v{v.version}</div>
-
-              <button
-                onClick={() => rollback(v.version)}
-                className="text-blue-600 text-sm"
-              >
-                Restore
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      {renderModules()}
     </div>
   );
 }
