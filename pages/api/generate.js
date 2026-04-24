@@ -1,53 +1,53 @@
 import { generateBlueprint } from "@/lib/blueprintEngine";
-import { kv } from "@/lib/kv";
+import { kv } from "@vercel/kv";
 import { generateModuleContent } from "@/lib/contentEngine";
 import { extractTraits } from "@/lib/traitEngine";
+import { randomUUID } from "crypto";
 
 // ------------------------------------
 // MAIN HANDLER
 // ------------------------------------
 export default async function handler(req, res) {
   try {
-    const { prompt, tier = "medium", slug } = req.body;
+    const { prompt, tier = "medium" } = req.body;
 
-    if (!prompt || !slug) {
-      return res.status(400).json({
-        error: "prompt and slug are required"
-      });
+    if (!prompt) {
+      return res.status(400).json({ error: "prompt required" });
     }
 
     // -----------------------------
-    // 🧠 1. INITIAL BLUEPRINT (CATEGORY ONLY)
+    // 1. IDENTITY (SOURCE OF TRUTH)
     // -----------------------------
-    const initialBlueprint = generateBlueprint({
-      prompt,
-      tier
-    });
+    const businessId = randomUUID();
+    const version = 1;
 
-    const category = initialBlueprint.type;
+    const baseSlug = prompt
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
 
-    // -----------------------------
-    // 🧠 2. TRAIT EXTRACTION (WITH CATEGORY)
-    // -----------------------------
-    const traits = extractTraits(prompt, category);
+    const slug = `${baseSlug}`;
 
     // -----------------------------
-    // 🧠 3. FINAL BLUEPRINT (TRAIT-AWARE)
+    // 2. TRAITS
     // -----------------------------
-    const finalBlueprint = generateBlueprint({
+    const traits = extractTraits(prompt);
+
+    // -----------------------------
+    // 3. BLUEPRINT (TRAIT AWARE)
+    // -----------------------------
+    const blueprint = generateBlueprint({
       prompt,
       tier,
       traits
     });
 
-    const { layout: modules } = finalBlueprint;
+    const { type: category, layout: modules } = blueprint;
 
-    const structure = {
-      home: modules
-    };
+    const structure = { home: modules };
 
     // -----------------------------
-    // 🧠 4. CONTENT GENERATION (STRICT JSON)
+    // 4. CONTENT GENERATION
     // -----------------------------
     const content = { home: {} };
 
@@ -60,18 +60,19 @@ export default async function handler(req, res) {
         traits
       });
 
-      if (result?.data && typeof result.data === "object") {
-        content.home[module] = result.data;
-      } else {
-        content.home[module] = {}; // strict fallback
-      }
+      content.home[module] =
+        result?.data && typeof result.data === "object"
+          ? result.data
+          : {};
     }
 
     // -----------------------------
-    // 🧠 5. FINAL SITE OBJECT
+    // 5. FINAL SITE OBJECT
     // -----------------------------
     const site = {
       schemaVersion: 3,
+      businessId,
+      version,
       slug,
       prompt,
       category,
@@ -83,17 +84,25 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // 🧠 6. KV STORAGE (VERSIONED)
+    // 6. STORE VERSIONED SITE
     // -----------------------------
-    const key = `site:${slug}`;
-    const existing = (await kv.get(key)) || [];
+    await kv.set(`site:${businessId}:v${version}`, site);
 
-    await kv.set(key, [...existing, site]);
+    // -----------------------------
+    // 7. SLUG POINTER
+    // -----------------------------
+    await kv.set(`slug:${slug}`, {
+      businessId,
+      currentVersion: version
+    });
 
-    return res.status(200).json(site);
+    return res.status(200).json({
+      slug,
+      businessId
+    });
 
   } catch (err) {
-    console.error("GENERATION ERROR:", err);
+    console.error(err);
     return res.status(500).json({ error: "Generation failed" });
   }
 }
