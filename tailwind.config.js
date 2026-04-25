@@ -5,14 +5,11 @@ module.exports = {
     "./components/**/*.{js,jsx}",
     "./lib/**/*.{js,jsx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
-      colors: {
-        primary: "#6366f1",
-      },
-      fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui"],
-      },
+      colors: { primary: "#6366f1" },
+      fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui"] },
     },
   },
   plugins: [],
