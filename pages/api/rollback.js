@@ -22,9 +22,7 @@ export default async function handler(req, res) {
     // -------------------------
     // GET TARGET VERSION
     // -------------------------
-    const targetSite = await kv.get(
-      `site:${businessId}:v${version}`
-    );
+    const targetSite = await kv.get(`site:${businessId}:v${version}`);
 
     if (!targetSite) {
       return res.status(404).json({ error: "Version not found" });
