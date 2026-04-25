@@ -8,10 +8,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
+    "next": "16.2.4",
     "react": "latest",
     "react-dom": "latest",
     "openai": "^4.0.0",
     "@vercel/kv": "^1.0.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0"
   }
 }
