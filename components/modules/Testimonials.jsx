@@ -1,16 +1,24 @@
-export default function CTA({ data }) {
+export default function Testimonials({ data }) {
   return (
-    <section className="py-24 px-6 bg-primary text-white text-center">
-      <div className="max-w-2xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">
-          {data.title || "Ready to get started?"}
+    <section className="py-20 px-6 bg-gray-50">
+      <div className="max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+          {data.title || "What Our Customers Say"}
         </h2>
-        <p className="text-indigo-200 mb-8 text-lg">
-          {data.subtitle || ""}
-        </p>
-        <button className="bg-white text-primary font-semibold px-8 py-3 rounded-xl shadow hover:shadow-lg hover:scale-105 transition-all">
-          {data.button || "Get Started"}
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {(data.items || []).map((item, i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <p className="text-gray-600 italic mb-4">
+                "{item.text || item.quote || ""}"
+              </p>
+              {item.name && (
+                <div className="font-semibold text-gray-900 text-sm">
+                  — {item.name}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
