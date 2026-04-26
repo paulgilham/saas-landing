@@ -1,17 +1,18 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { moduleRegistry } from "@/lib/moduleRegistry";
-import { LAYOUT_RULES, MODULE_PRIORITY } from "@/lib/layoutRules";
+import { selectVariant } from "@/lib/moduleVariants";
+import ModuleWrapper from "@/components/modules/ModuleWrapper";
 
 export default function SitePage() {
   const router = useRouter();
   const { slug } = router.query;
 
-  const [site, setSite] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [site, setSite]                 = useState(null);
+  const [history, setHistory]           = useState([]);
+  const [panelOpen, setPanelOpen]       = useState(false);
   const [hoveredModule, setHoveredModule] = useState(null);
-  const [regenTarget, setRegenTarget] = useState(null);
+  const [regenTarget, setRegenTarget]   = useState(null);
   const [regenInstruction, setRegenInstruction] = useState("");
   const [regenSuggestions, setRegenSuggestions] = useState([]);
   const [regenLoading, setRegenLoading] = useState(false);
@@ -24,18 +25,21 @@ export default function SitePage() {
   }, [slug]);
 
   const loadSite = async () => {
-    const res = await fetch(`/api/site?slug=${slug}`);
+    const res  = await fetch(`/api/site?slug=${slug}`);
     const data = await res.json();
     if (!data?.site) return;
     setSite(data.site);
   };
 
   const loadHistory = async () => {
-    const res = await fetch(`/api/site-history?slug=${slug}`);
+    const res  = await fetch(`/api/site-history?slug=${slug}`);
     const data = await res.json();
     if (data?.versions) setHistory(data.versions);
   };
 
+  // -----------------------------
+  // OPEN REGEN PANEL
+  // -----------------------------
   const openRegen = async (moduleName) => {
     setRegenTarget(moduleName);
     setRegenInstruction("");
@@ -43,7 +47,7 @@ export default function SitePage() {
     setSuggestLoading(true);
 
     try {
-      const res = await fetch("/api/regenerate-module", {
+      const res  = await fetch("/api/regenerate-module", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, moduleName, suggestOnly: true }),
@@ -56,8 +60,11 @@ export default function SitePage() {
     setSuggestLoading(false);
   };
 
+  // -----------------------------
+  // ROLLBACK
+  // -----------------------------
   const handleRollback = async (version) => {
-    const res = await fetch("/api/rollback", {
+    const res  = await fetch("/api/rollback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug, version }),
@@ -70,9 +77,12 @@ export default function SitePage() {
     }
   };
 
+  // -----------------------------
+  // REGENERATE MODULE
+  // -----------------------------
   const handleRegen = async (instruction) => {
     setRegenLoading(true);
-    const res = await fetch("/api/regenerate-module", {
+    const res  = await fetch("/api/regenerate-module", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -93,24 +103,24 @@ export default function SitePage() {
     setRegenSuggestions([]);
   };
 
-  const getLayoutStyle = (moduleName, tier) => {
-    const rules = LAYOUT_RULES[tier] || LAYOUT_RULES.medium;
-    const priority = MODULE_PRIORITY[moduleName] || 1;
-    return { sectionSpacing: rules.sectionSpacing, containerWidth: rules.containerWidth, priority };
-  };
-
+  // -----------------------------
+  // RENDER MODULES
+  // -----------------------------
   const renderModules = () => {
     const structure = site?.structure?.home || [];
-    const tier = site?.tier || "medium";
+    const tier      = site?.tier    || "medium";
+    const traits    = site?.traits  || [];
 
     return structure.map((moduleName, i) => {
       const Component = moduleRegistry[moduleName];
       if (!Component) return null;
 
       const rawData = site?.content?.home?.[moduleName] || {};
-      const layout = getLayoutStyle(moduleName, tier);
-      const isTarget = regenTarget === moduleName;
-      const isHovered = hoveredModule === moduleName;
+      const isTarget  = regenTarget    === moduleName;
+      const isHovered = hoveredModule  === moduleName;
+
+      // Select visual variant based on traits + tier
+      const variant = selectVariant(moduleName, { traits, tier });
 
       return (
         <div
@@ -119,9 +129,14 @@ export default function SitePage() {
           onMouseEnter={() => setHoveredModule(moduleName)}
           onMouseLeave={() => setHoveredModule(null)}
         >
-          {/* SECTION CONTENT */}
+          {/* ACTIVE SECTION HIGHLIGHT */}
           <div className={`transition-all duration-200 ${isTarget ? "ring-2 ring-primary ring-inset" : ""}`}>
-            <Component data={rawData} />
+
+            {/* TRAIT-DRIVEN SPACING + CONTAINER via ModuleWrapper */}
+            <ModuleWrapper moduleName={moduleName} traits={traits} tier={tier}>
+              <Component data={rawData} variant={variant} />
+            </ModuleWrapper>
+
           </div>
 
           {/* IMPROVE BUTTON — hover only */}
@@ -143,7 +158,6 @@ export default function SitePage() {
             <div className="bg-gray-50 border-t border-b border-gray-200 px-6 py-5">
               <div className="max-w-2xl mx-auto">
 
-                {/* HEADER */}
                 <div className="flex justify-between items-center mb-4">
                   <p className="text-sm font-semibold text-gray-900">
                     Improve: <span className="text-primary">{regenTarget}</span>
@@ -156,7 +170,6 @@ export default function SitePage() {
                   </button>
                 </div>
 
-                {/* AI SUGGESTIONS */}
                 {suggestLoading && (
                   <p className="text-xs text-gray-400 mb-4 animate-pulse">
                     Generating suggestions...
@@ -183,7 +196,6 @@ export default function SitePage() {
                   </div>
                 )}
 
-                {/* CUSTOM INPUT */}
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                   Or write your own
                 </p>
@@ -238,12 +250,10 @@ export default function SitePage() {
       {/* VERSION HISTORY DRAWER */}
       {panelOpen && (
         <>
-          {/* backdrop */}
           <div
             className="fixed inset-0 bg-black/20 z-40"
             onClick={() => setPanelOpen(false)}
           />
-          {/* drawer */}
           <div className="fixed right-0 top-0 h-full w-72 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col">
             <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100">
               <h2 className="font-bold text-base">Version History</h2>
@@ -254,7 +264,6 @@ export default function SitePage() {
                 ✕
               </button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4">
               {history.length === 0 && (
                 <p className="text-gray-400 text-sm text-center mt-8">No history yet.</p>
