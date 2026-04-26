@@ -1,8 +1,13 @@
 import { generateBlueprint } from "@/lib/blueprintEngine";
-import { kv } from "@vercel/kv";
 import { generateModuleContent } from "@/lib/contentEngine";
 import { extractTraits } from "@/lib/traitEngine";
 import { randomUUID } from "crypto";
+import {
+  generateUniqueSlug,
+  saveSiteVersion,
+  updateSlugPointer,
+  saveBusinessProfile
+} from "@/lib/kv";
 
 // ------------------------------------
 // MAIN HANDLER
@@ -16,17 +21,13 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // 1. IDENTITY (SOURCE OF TRUTH)
+    // 1. IDENTITY
+    // businessId is always a fresh UUID — true unique identity
+    // slug is human-readable but also guaranteed unique via lib/kv
     // -----------------------------
     const businessId = randomUUID();
     const version = 1;
-
-    const baseSlug = prompt
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-
-    const slug = `${baseSlug}`;
+    const slug = await generateUniqueSlug(prompt, businessId);
 
     // -----------------------------
     // 2. TRAITS
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
     const traits = extractTraits(prompt);
 
     // -----------------------------
-    // 3. BLUEPRINT (TRAIT AWARE)
+    // 3. BLUEPRINT
     // -----------------------------
     const blueprint = generateBlueprint({
       prompt,
@@ -43,7 +44,6 @@ export default async function handler(req, res) {
     });
 
     const { type: category, layout: modules } = blueprint;
-
     const structure = { home: modules };
 
     // -----------------------------
@@ -84,22 +84,27 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // 6. STORE VERSIONED SITE
+    // 6. SAVE SITE + SLUG POINTER
+    // using lib/kv helper — key patterns managed centrally
     // -----------------------------
-    await kv.set(`site:${businessId}:v${version}`, site);
+    await saveSiteVersion(businessId, version, site);
+    await updateSlugPointer(slug, businessId, version);
 
     // -----------------------------
-    // 7. SLUG POINTER
+    // 7. SAVE BUSINESS PROFILE
+    // stored separately for intelligence layer (Steps 5-6)
     // -----------------------------
-    await kv.set(`slug:${slug}`, {
+    await saveBusinessProfile(businessId, {
       businessId,
-      currentVersion: version
+      prompt,
+      category,
+      tier,
+      traits,
+      slug,
+      createdAt: Date.now()
     });
 
-    return res.status(200).json({
-      slug,
-      businessId
-    });
+    return res.status(200).json({ slug, businessId });
 
   } catch (err) {
     console.error(err);
