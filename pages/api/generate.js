@@ -9,9 +9,6 @@ import {
   saveBusinessProfile
 } from "@/lib/kv";
 
-// ------------------------------------
-// MAIN HANDLER
-// ------------------------------------
 export default async function handler(req, res) {
   try {
     const { prompt, tier = "medium" } = req.body;
@@ -22,32 +19,34 @@ export default async function handler(req, res) {
 
     // -----------------------------
     // 1. IDENTITY
-    // businessId is always a fresh UUID — true unique identity
-    // slug is human-readable but also guaranteed unique via lib/kv
     // -----------------------------
     const businessId = randomUUID();
     const version = 1;
     const slug = await generateUniqueSlug(prompt, businessId);
 
     // -----------------------------
-    // 2. TRAITS
+    // 2. TRAITS + CATEGORY
+    // Single call returns { category, traits } in unified vocabulary
     // -----------------------------
-    const traits = extractTraits(prompt);
+    const { category, traits } = extractTraits(prompt);
 
     // -----------------------------
     // 3. BLUEPRINT
+    // category and traits passed directly — no internal detection
     // -----------------------------
     const blueprint = generateBlueprint({
       prompt,
+      category,
       tier,
       traits
     });
 
-    const { type: category, layout: modules } = blueprint;
+    const { layout: modules } = blueprint;
     const structure = { home: modules };
 
     // -----------------------------
     // 4. CONTENT GENERATION
+    // traits now passed through to contentEngine AI prompt
     // -----------------------------
     const content = { home: {} };
 
@@ -85,14 +84,12 @@ export default async function handler(req, res) {
 
     // -----------------------------
     // 6. SAVE SITE + SLUG POINTER
-    // using lib/kv helper — key patterns managed centrally
     // -----------------------------
     await saveSiteVersion(businessId, version, site);
     await updateSlugPointer(slug, businessId, version);
 
     // -----------------------------
     // 7. SAVE BUSINESS PROFILE
-    // stored separately for intelligence layer (Steps 5-6)
     // -----------------------------
     await saveBusinessProfile(businessId, {
       businessId,
